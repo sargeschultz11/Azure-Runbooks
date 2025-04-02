@@ -1,13 +1,14 @@
 # Update-IntuneDeviceCategories.ps1
 
 ## Overview
-This Azure Automation runbook script automatically updates the device categories of Windows and iOS devices in Microsoft Intune based on the primary user's department. It fetches all devices and updates the device category to match the department name of the assigned primary user.
+This Azure Automation runbook script automatically updates the device categories of Windows, iOS, Android, and Linux devices in Microsoft Intune based on the primary user's department. It fetches all devices and updates the device category to match the department name of the assigned primary user, with built-in batching and throttling handling for large environments.
 
 ## Purpose
 The primary purpose of this script is to ensure consistent device categorization in Intune by:
-- Identifying Windows and iOS devices with missing or mismatched categories
+- Identifying devices (Windows, iOS, Android, and Linux) with missing or mismatched categories
 - Retrieving the primary user's department information
 - Setting the device category to match the user's department when available
+- Processing devices in batches to avoid API throttling in large environments
 
 This automation helps maintain better organization within the Intune portal and can be used for device targeting, reporting, and policy assignment. It is also useful for creating dynamic groups.
 
@@ -34,17 +35,35 @@ This automation helps maintain better organization within the Intune portal and 
 | ClientId | String | No | The App Registration's client ID. If not provided, will be retrieved from Automation variables. |
 | ClientSecret | String | No | The App Registration's client secret. If not provided, will be retrieved from Automation variables. |
 | WhatIf | Switch | No | If specified, shows what changes would occur without actually making any updates. |
-| OSType | String | No | Specifies which operating systems to process. Valid values are "All", "Windows", "iOS". Default is "All". |
+| OSType | String | No | Specifies which operating systems to process. Valid values are "All", "Windows", "iOS", "Android", "Linux". Default is "All". |
+| BatchSize | Int | No | Number of devices to process in each batch. Default is 50. |
+| BatchDelaySeconds | Int | No | Number of seconds to wait between processing batches. Default is 10. |
+| MaxRetries | Int | No | Maximum number of retry attempts for throttled API requests. Default is 5. |
+| InitialBackoffSeconds | Int | No | Initial backoff period in seconds before retrying a throttled request. Default is 5. |
 
 ## Execution Flow
 1. **Authentication**: The script authenticates to Microsoft Graph API using the provided client credentials.
 2. **Device Category Retrieval**: Retrieves all device categories defined in Intune.
-3. **Device Retrieval**: Gets all specified devices (Windows, iOS, or both) from Intune.
-4. **Processing Loop**: For each device:
+3. **Device Retrieval**: Gets all specified devices (Windows, iOS, Android, Linux, or any combination) from Intune.
+4. **Batch Processing**: Divides devices into batches of the specified size.
+5. **Processing Loop**: For each batch:
+   - Processes each device in the batch
    - Checks if a device category is already assigned
    - Retrieves the primary user of the device
    - Gets the user's department information
    - If the department exists as a device category and differs from the current device category, updates the device's category
+   - Waits for the specified delay period before processing the next batch
+
+## Throttling and Batching
+The script includes built-in throttling detection and handling:
+- **Batch Processing**: Processes devices in configurable batches (default: 50 devices per batch)
+- **Delay Between Batches**: Automatically pauses between batches (default: 10 seconds) to avoid overwhelming the Graph API
+- **Throttling Detection**: Automatically detects when the Graph API returns throttling responses (HTTP 429)
+- **Retry Logic**: Implements exponential backoff retry logic when throttled
+- **Respect for Retry-After**: Honors the Retry-After header when provided by the Graph API
+- **Server Error Handling**: Also handles 5xx server errors with retries
+
+These features make the script suitable for large organizations with thousands of devices, as it can gracefully handle API rate limits.
 
 ## Output
 The script produces a PowerShell custom object with the following properties:
@@ -57,16 +76,13 @@ The script produces a PowerShell custom object with the following properties:
 | Skipped | Number of devices skipped (no primary user, no department, or department not a category) |
 | Errors | Number of devices that encountered errors during processing |
 | WhatIfMode | Boolean indicating if WhatIf mode was enabled |
-| WindowsDevices | Total number of Windows devices processed |
-| WindowsUpdated | Number of Windows devices updated |
-| WindowsMatched | Number of Windows devices already properly categorized |
-| WindowsSkipped | Number of Windows devices skipped |
-| WindowsErrors | Number of Windows devices with errors |
-| iOSDevices | Total number of iOS devices processed |
-| iOSUpdated | Number of iOS devices updated |
-| iOSMatched | Number of iOS devices already properly categorized |
-| iOSSkipped | Number of iOS devices skipped |
-| iOSErrors | Number of iOS devices with errors |
+| DurationMinutes | Total run time in minutes |
+| BatchesProcessed | Number of batches processed |
+| *OSName*Devices | Total number of devices processed for each OS type (Windows, iOS, Android, Linux) |
+| *OSName*Updated | Number of devices updated for each OS type |
+| *OSName*Matched | Number of devices already properly categorized for each OS type |
+| *OSName*Skipped | Number of devices skipped for each OS type |
+| *OSName*Errors | Number of devices with errors for each OS type |
 
 ## Logging
 The script utilizes verbose logging to provide detailed information about each step:
@@ -74,18 +90,22 @@ The script utilizes verbose logging to provide detailed information about each s
 - Write-Verbose is used for standard logging in Azure Automation
 - Specific error cases are captured and logged appropriately
 - OS-specific statistics are maintained separately
+- Batch processing status and progress are logged
+- API throttling events are logged with retry information
 
 
 ## Error Handling
 The script includes comprehensive error handling:
 - Authentication failures are captured and reported
 - API request errors are logged with details
+- Throttling errors are handled with exponential backoff retries
 - Device processing errors are isolated to prevent the entire script from failing
-- Summary statistics include error counts for both Windows and iOS devices
+- Summary statistics include error counts for all device types (Windows, iOS, Android, and Linux)
 
 ## Notes
 - **CRITICAL REQUIREMENT**: The script depends on exact matching between department names in Azure AD and device category names in Intune. If these don't match exactly, the categorization will not work.
 - Before running this script, ensure that all departments used in your organization have corresponding device categories created in Intune with identical naming.
+- For large environments (thousands of devices), consider adjusting the BatchSize and BatchDelaySeconds parameters to avoid throttling.
 - Devices without primary users or where the user has no department are skipped
 - The script counts and reports cases where department names don't exist as device categories
 - For devices that already have the correct category assigned, no changes are made
