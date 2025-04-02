@@ -1,0 +1,120 @@
+
+# PowerShell-specific ignore rules
+
+# PowerShell Module output directories
+[Oo]ut/
+[Mm]odules/
+
+# PSCache and Logs
+*.pscache
+*.[Ll]og
+*.log.[1-9]
+*.log.[1-9][0-9]
+
+# PowerShell output files
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.obj
+*.wixobj
+*.msi
+
+# MSBuild and .NET build outputs
+bin/
+obj/
+packages/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+[Bb]uild/
+
+# Nuget packages
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+# PowerShell Studio generated files
+*_Workspace.ps1
+*.psprojs
+*.psf
+*.txt.bak
+*.psbuild
+
+# VS files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.rsuser
+*.[Cc]ache
+*.[Cc]ache/
+
+# PSScriptAnalyzer results
+[Aa]nalysis[Rr]esults.xml
+PSScriptAnalyzerSettings.psd1
+
+# PowerShell Help files
+*-help.xml
+
+# Temporary files
+*~
+*.bak
+*.tmp
+*.swp
+*.orig
+*.temp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local configuration files
+local.settings.json
+appsettings.*.json
+*.publishsettings
+
+# Intune-specific files
+*.intunewin
+
+# Office deployment tool output
+setup.exe
+configuration-*.xml
+
+# Crash dumps
+*.dump
+*.dmp
+*.mdmp
+
+# Secrets and environment files
+*.key
+*.pem
+*.pfx
+*.ps1.enc
+*.env
+.env
+.env.*
+*secrets*
+*credentials*
+*token*
+*password*
+*apikey*
+*secret*
+!*example*
+!*template*
+!*sample*
+
+# Test results
+TestResults/
+[Cc]overage/
+coverage.*
+.coverage
+htmlcov/
+
+# Logs directory
+logs/
