@@ -2,7 +2,7 @@
 .SYNOPSIS
     Updates Intune device categories (Windows, iOS, Android, and Linux) to match primary user's department.
 .DESCRIPTION
-    This Azure Runbook script authenticates to Microsoft Graph API using a client ID and secret,
+    This Azure Runbook script authenticates to Microsoft Graph API using managed identity,
     retrieves all Intune devices (Windows, iOS, Android, and Linux), and for devices with no category, sets the category
     to match the primary user's department. Includes a -WhatIf parameter for testing without making changes and
     an -OSType parameter to specify which types of devices to process.
@@ -24,19 +24,10 @@
 .NOTES
     File Name: Update-IntuneDeviceCategories.ps1
     Author: Ryan Schultz
-    Version: 2.0
+    Version: 2.2
 #>
 
 param(
-    [Parameter(Mandatory = $false)]
-    [string]$TenantId,
-    
-    [Parameter(Mandatory = $false)]
-    [string]$ClientId,
-    
-    [Parameter(Mandatory = $false)]
-    [string]$ClientSecret,
-    
     [Parameter(Mandatory = $false)]
     [switch]$WhatIf,
 
@@ -84,39 +75,85 @@ function Write-Log {
     }
 }
 
+# Connect to Azure using the managed identity
 function Get-MsGraphToken {
-    param (
-        [string]$TenantId,
-        [string]$ClientId,
-        [string]$ClientSecret
-    )
-    
     try {
-        Write-Log "Attempting to acquire Microsoft Graph API token..."
+        Write-Log "Acquiring Microsoft Graph token using Managed Identity..."
         
-        if ([string]::IsNullOrEmpty($TenantId) -or [string]::IsNullOrEmpty($ClientId) -or [string]::IsNullOrEmpty($ClientSecret)) {
-            Write-Log "Using Azure Automation variables for authentication"
-            $TenantId = Get-AutomationVariable -Name 'TenantId'
-            $ClientId = Get-AutomationVariable -Name 'ClientId'
-            $ClientSecret = Get-AutomationVariable -Name 'ClientSecret'
+        Connect-AzAccount -Identity | Out-Null
+        
+        $azAccountsModule = Get-Module -Name Az.Accounts -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
+        Write-Log "Using Az.Accounts module version: $($azAccountsModule.Version)"
+        
+        $token = $null
+        
+        if ($azAccountsModule.Version.Major -ge 2) {
+            try {
+                $tokenResult = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com"
+                
+                if ($null -ne $tokenResult -and $null -ne $tokenResult.Token) {
+                    $token = $tokenResult.Token
+                    Write-Log "Successfully acquired token using standard approach"
+                }
+            }
+            catch {
+                Write-Log "Failed to get token using standard approach: $($_.Exception.Message)" -Type "WARNING"
+            }
         }
         
-        $tokenUrl = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
-        
-        $body = @{
-            client_id     = $ClientId
-            scope         = "https://graph.microsoft.com/.default"
-            client_secret = $ClientSecret
-            grant_type    = "client_credentials"
+        if ([string]::IsNullOrEmpty($token)) {
+            Write-Log "Attempting alternative token acquisition approach"
+            
+            if (-not (Get-Module -Name Az.Accounts)) {
+                Import-Module Az.Accounts -ErrorAction Stop
+            }
+            
+            $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+            $tokenCache = $context.TokenCache
+            $cachedTokens = $tokenCache.ReadItems() | Where-Object { $_.Resource -eq "https://graph.microsoft.com" }
+            
+            if ($cachedTokens -and $cachedTokens.Count -gt 0) {
+                $latestToken = $cachedTokens | Sort-Object ExpiresOn -Descending | Select-Object -First 1
+                $token = $latestToken.AccessToken
+                Write-Log "Successfully acquired token from token cache"
+            }
         }
         
-        $response = Invoke-RestMethod -Method Post -Uri $tokenUrl -Body $body -ContentType "application/x-www-form-urlencoded"
-        Write-Log "Successfully acquired token" 
-        return $response.access_token
+        if ([string]::IsNullOrEmpty($token)) {
+            Write-Log "Attempting final fallback token acquisition approach" -Type "WARNING"
+            
+            $armToken = Get-AzAccessToken
+            
+            if ($null -ne $armToken -and $null -ne $armToken.Token) {
+                $graphToken = Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/$((Get-AzContext).Tenant.Id)/oauth2/v2.0/token" -Body @{
+                    grant_type    = "client_credentials"
+                    client_id     = $env:IDENTITY_CLIENT_ID 
+                    scope         = "https://graph.microsoft.com/.default"
+                    client_secret = $env:IDENTITY_CLIENT_SECRET 
+                } -ContentType "application/x-www-form-urlencoded"
+                
+                if ($graphToken -and $graphToken.access_token) {
+                    $token = $graphToken.access_token
+                    Write-Log "Successfully acquired token using token exchange approach"
+                }
+            }
+        }
+        
+        if ([string]::IsNullOrEmpty($token)) {
+            throw "Failed to acquire valid token from managed identity after trying multiple approaches"
+        }
+        
+        if ($token -notmatch '\..*\.') {
+            $tokenPreview = if ($token.Length -gt 20) { $token.Substring(0, 20) + "..." } else { $token }
+            throw "Acquired token does not appear to be a valid JWT. Token preview: $tokenPreview"
+        }
+        
+        Write-Log "Successfully acquired Microsoft Graph API token via Managed Identity"
+        return $token
     }
     catch {
-        Write-Log "Failed to acquire token: $_" -Type "ERROR"
-        throw "Authentication failed: $_"
+        Write-Log "Failed to acquire Microsoft Graph token using Managed Identity: $($_.Exception.Message)" -Type "ERROR"
+        throw "Authentication failed: $($_.Exception.Message)"
     }
 }
 
@@ -505,7 +542,7 @@ try {
     
     $startTime = Get-Date
     
-    $token = Get-MsGraphToken -TenantId $TenantId -ClientId $ClientId -ClientSecret $ClientSecret
+    $token = Get-MsGraphToken
     
     $categoryLookup = Get-IntuneDeviceCategories -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
     
