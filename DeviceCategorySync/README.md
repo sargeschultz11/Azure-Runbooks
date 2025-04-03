@@ -13,27 +13,28 @@ The primary purpose of this script is to ensure consistent device categorization
 This automation helps maintain better organization within the Intune portal and can be used for device targeting, reporting, and policy assignment. It is also useful for creating dynamic groups.
 
 ## Prerequisites
-- An Azure Automation account
-- An Azure AD App Registration with the following:
-  - Client ID
-  - Client Secret
-  - Proper Microsoft Graph API permissions:
-    - `DeviceManagementManagedDevices.Read.All`
-    - `DeviceManagementManagedDevices.ReadWrite.All`
-    - `User.Read.All`
-- The following variables defined in the Automation account:
-  - `TenantId`: Your Azure AD tenant ID
-  - `ClientId`: The App Registration's client ID
-  - `ClientSecret`: The App Registration's client secret (stored as an encrypted variable)
+- An Azure Automation account with System-Assigned Managed Identity enabled
+- The Managed Identity must have the following Microsoft Graph API permissions:
+  - `DeviceManagementManagedDevices.Read.All`
+  - `DeviceManagementManagedDevices.ReadWrite.All`
+  - `DeviceManagementServiceConfig.ReadWrite.All`
+  - `DeviceManagementConfiguration.ReadWrite.All`
+  - `User.Read.All`
+- The Az.Accounts PowerShell module must be imported into your Azure Automation account
 - **IMPORTANT**: Device categories must be pre-created in Intune and must match **exactly** the department names in user account properties in Azure AD
+
+## Setting Up Managed Identity Permissions
+You can use the included `Add-GraphPermissions.ps1` script to assign the necessary Microsoft Graph API permissions to your Automation Account's System-Assigned Managed Identity:
+
+1. Enable System-Assigned Managed Identity for your Azure Automation account
+2. Get the Object ID of the Managed Identity from the Azure Portal
+3. Update the `$AutomationMSI_ID` parameter in the script with your Managed Identity's Object ID
+4. Run the script from a PowerShell session with suitable administrative permissions
 
 ## Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| TenantId | String | No | Your Azure AD tenant ID. If not provided, will be retrieved from Automation variables. |
-| ClientId | String | No | The App Registration's client ID. If not provided, will be retrieved from Automation variables. |
-| ClientSecret | String | No | The App Registration's client secret. If not provided, will be retrieved from Automation variables. |
 | WhatIf | Switch | No | If specified, shows what changes would occur without actually making any updates. |
 | OSType | String | No | Specifies which operating systems to process. Valid values are "All", "Windows", "iOS", "Android", "Linux". Default is "All". |
 | BatchSize | Int | No | Number of devices to process in each batch. Default is 50. |
@@ -42,7 +43,7 @@ This automation helps maintain better organization within the Intune portal and 
 | InitialBackoffSeconds | Int | No | Initial backoff period in seconds before retrying a throttled request. Default is 5. |
 
 ## Execution Flow
-1. **Authentication**: The script authenticates to Microsoft Graph API using the provided client credentials.
+1. **Authentication**: The script authenticates to Microsoft Graph API using the Automation Account's Managed Identity.
 2. **Device Category Retrieval**: Retrieves all device categories defined in Intune.
 3. **Device Retrieval**: Gets all specified devices (Windows, iOS, Android, Linux, or any combination) from Intune.
 4. **Batch Processing**: Divides devices into batches of the specified size.
@@ -93,7 +94,6 @@ The script utilizes verbose logging to provide detailed information about each s
 - Batch processing status and progress are logged
 - API throttling events are logged with retry information
 
-
 ## Error Handling
 The script includes comprehensive error handling:
 - Authentication failures are captured and reported
@@ -110,8 +110,4 @@ The script includes comprehensive error handling:
 - The script counts and reports cases where department names don't exist as device categories
 - For devices that already have the correct category assigned, no changes are made
 - If department names in Azure AD don't match device categories in Intune exactly (including case, spacing, and special characters), the script will report these as skipped devices
-
-## Author Information
-- **Author**: Ryan Schultz
-- **Version**: 2.0
-- **Creation Date**: 2025-04-02
+- After making changes to Managed Identity permissions, it may take some time (up to an hour) for permissions to fully propagate through Azure's systems
