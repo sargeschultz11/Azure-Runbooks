@@ -39,7 +39,7 @@
 .NOTES
     File Name: Get-IntuneDiscoveredAppsReport.ps1
     Author: Ryan Schultz
-    Version: 1.0
+    Version: 1.1
     Created: 2025-04-04
 
     Requires -Modules ImportExcel
@@ -210,45 +210,30 @@ function Invoke-MsGraphRequestWithRetry {
     }
 }
 
-function Get-IntuneDiscoveredApps {
+function Get-IntuneDiscoveredAppsDirectReport {
     param (
-        [string]$Token,
-        [int]$MaxRetries = 5,
-        [int]$InitialBackoffSeconds = 5,
-        [int]$BatchSize = 100
+        [string]$Token
     )
     
     try {
-        Write-Log "Retrieving discovered apps from Intune..."
+        Write-Log "Requesting Intune discovered apps direct report..."
         
-        $discoveredApps = @()
-        $uri = "https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?`$top=$BatchSize"
+        $uri = "https://graph.microsoft.com/beta/deviceManagement/detectedApps"
         
-        $count = 0
-        $batchCount = 0
+        $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $uri
         
-        do {
-            $batchCount++
-            Write-Log "Retrieving batch $batchCount of discovered apps..."
-            
-            $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $uri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
-            
-            if ($response.value.Count -gt 0) {
-                $discoveredApps += $response.value
-                $count += $response.value.Count
-                Write-Log "Retrieved $($response.value.Count) apps in this batch, total count: $count"
-            }
-            
-            $uri = $response.'@odata.nextLink'
-        } while ($null -ne $uri)
-        
-        Write-Log "Retrieved a total of $($discoveredApps.Count) discovered apps"
-        
-        return $discoveredApps
+        if ($response.value) {
+            Write-Log "Retrieved ${($response.value.Count)} discovered apps"
+            return $response.value
+        }
+        else {
+            Write-Log "No detected apps found or unexpected response format" -Type "WARNING"
+            return @()
+        }
     }
     catch {
-        Write-Log "Failed to retrieve discovered apps: $_" -Type "ERROR"
-        throw "Failed to retrieve discovered apps: $_"
+        Write-Log "Failed to get direct report: $_" -Type "ERROR"
+        throw $_
     }
 }
 
@@ -282,6 +267,7 @@ function Export-DataToExcel {
                                        @{Name='Publisher';Expression={$_.publisher}}, 
                                        @{Name='Version';Expression={$_.version}}, 
                                        @{Name='Device Count';Expression={$_.deviceCount}}, 
+                                       @{Name='Platform';Expression={$_.platform}},
                                        @{Name='Size in Bytes';Expression={$_.sizeInByte}}, 
                                        @{Name='App ID';Expression={$_.id}} | 
                  Export-Excel @excelParams
@@ -322,6 +308,26 @@ function Export-DataToExcel {
         foreach ($publisher in $publisherSummary) {
             $summarySheet.Cells["A$row"].Value = if ([string]::IsNullOrEmpty($publisher.Name)) { "(Unknown)" } else { $publisher.Name }
             $summarySheet.Cells["B$row"].Value = $publisher.Count
+            $row++
+        }
+        
+        $row += 2
+        $summarySheet.Cells["A$row"].Value = "Platform Summary"
+        $summarySheet.Cells["A$row"].Style.Font.Bold = $true
+        $row++
+        
+        $platformSummary = $Data | Group-Object -Property platform | 
+                           Sort-Object -Property Count -Descending
+        
+        $summarySheet.Cells["A$row"].Value = "Platform"
+        $summarySheet.Cells["B$row"].Value = "App Count"
+        $summarySheet.Cells["A$row"].Style.Font.Bold = $true
+        $summarySheet.Cells["B$row"].Style.Font.Bold = $true
+        $row++
+        
+        foreach ($platform in $platformSummary) {
+            $summarySheet.Cells["A$row"].Value = if ([string]::IsNullOrEmpty($platform.Name)) { "(Unknown)" } else { $platform.Name }
+            $summarySheet.Cells["B$row"].Value = $platform.Count
             $row++
         }
         
@@ -497,13 +503,15 @@ try {
     
     $token = Get-MsGraphToken -TenantId $TenantId -ClientId $ClientId -ClientSecret $ClientSecret
     
-    $discoveredApps = Get-IntuneDiscoveredApps -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds -BatchSize $BatchSize
+    # Get data directly from the API
+    $discoveredApps = Get-IntuneDiscoveredAppsDirectReport -Token $token
     
     if ($discoveredApps.Count -eq 0) {
         Write-Log "No discovered apps found in Intune" -Type "WARNING"
         return
     }
     
+    # Create Excel file
     $currentDate = Get-Date -Format "yyyy-MM-dd_HH-mm"
     $reportName = "Intune_Discovered_Apps_Report_$currentDate.xlsx"
     $tempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), $reportName)
