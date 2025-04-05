@@ -52,6 +52,7 @@ A table with the following columns:
 - Publisher
 - Version
 - Device Count
+- Platform
 - Size in Bytes
 - App ID
 
@@ -59,6 +60,7 @@ A table with the following columns:
 - Report metadata (generation date, system info)
 - Total number of discovered apps
 - Top 10 publishers with app counts
+- Platform summary (distribution of apps by platform)
 
 ## Setup Instructions
 
@@ -113,7 +115,7 @@ A table with the following columns:
 
 ## Execution Flow
 1. **Authentication**: The script authenticates to Microsoft Graph API.
-2. **Data Retrieval**: Gets all discovered apps from Intune.
+2. **Data Retrieval**: Gets all discovered apps from Intune using the direct API endpoint.
 3. **Excel Report Generation**: Creates the Excel report with app data and summaries.
 4. **SharePoint Upload**: Uploads the report to the specified SharePoint location.
 5. **Teams Notification**: Optionally sends a notification card to Teams with report details.
@@ -121,7 +123,6 @@ A table with the following columns:
 
 ## Throttling and Batching
 The script includes built-in throttling detection and handling:
-- **Batch Processing**: Retrieves apps in configurable batches
 - **Exponential Backoff**: Implements exponential backoff for throttled requests
 - **Retry Logic**: Automatically retries failed requests with increasing backoff periods
 - **Retry-After Header**: Respects the Retry-After header from Microsoft Graph API when provided
@@ -141,7 +142,6 @@ The script produces a PowerShell custom object with the following properties:
 ## Logging
 The script utilizes verbose logging to provide detailed information about each step:
 - All log entries include timestamps and log levels (INFO, WARNING, ERROR)
-- Progress indicators for batch processing
 - Detailed error information when issues occur
 
 ## Error Handling
@@ -153,7 +153,6 @@ The script includes comprehensive error handling:
 - Module dependencies are checked and installed if missing
 
 ## Notes
-- For large environments with thousands of applications, consider adjusting the BatchSize parameter
 - The ImportExcel module must be imported into the Azure Automation account
 - The report includes applications detected across all managed device platforms (Windows, iOS, Android, MacOS)
 - Make sure the SharePoint folder path exists before running the script
@@ -161,5 +160,5 @@ The script includes comprehensive error handling:
 
 ## Author Information
 - **Author**: Ryan Schultz
-- **Version**: 1.0
+- **Version**: 1.1
 - **Creation Date**: 2025-04-04
