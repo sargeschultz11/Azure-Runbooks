@@ -39,7 +39,7 @@
 .NOTES
     File Name: Get-IntuneDiscoveredAppsReport.ps1
     Author: Ryan Schultz
-    Version: 1.0
+    Version: 1.1
     Created: 2025-04-04
 
     Requires -Modules ImportExcel
@@ -48,13 +48,10 @@
 
 param(
     [Parameter(Mandatory = $false)]
+    [switch]$UseManagedIdentity = $true,
+    
+    [Parameter(Mandatory = $false)]
     [string]$TenantId,
-    
-    [Parameter(Mandatory = $false)]
-    [string]$ClientId,
-    
-    [Parameter(Mandatory = $false)]
-    [string]$ClientSecret,
 
     [Parameter(Mandatory = $true)]
     [string]$SharePointSiteId,
@@ -102,39 +99,85 @@ function Write-Log {
     }
 }
 
+
 function Get-MsGraphToken {
-    param (
-        [string]$TenantId,
-        [string]$ClientId,
-        [string]$ClientSecret
-    )
-    
     try {
-        Write-Log "Attempting to acquire Microsoft Graph API token..."
+        Write-Log "Acquiring Microsoft Graph token using Managed Identity..."
         
-        if ([string]::IsNullOrEmpty($TenantId) -or [string]::IsNullOrEmpty($ClientId) -or [string]::IsNullOrEmpty($ClientSecret)) {
-            Write-Log "Using Azure Automation variables for authentication"
-            $TenantId = Get-AutomationVariable -Name 'TenantId'
-            $ClientId = Get-AutomationVariable -Name 'ClientId'
-            $ClientSecret = Get-AutomationVariable -Name 'ClientSecret'
+        Connect-AzAccount -Identity | Out-Null
+        
+        $azAccountsModule = Get-Module -Name Az.Accounts -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
+        Write-Log "Using Az.Accounts module version: $($azAccountsModule.Version)"
+        
+        $token = $null
+        
+        if ($azAccountsModule.Version.Major -ge 2) {
+            try {
+                $tokenResult = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com"
+                
+                if ($null -ne $tokenResult -and $null -ne $tokenResult.Token) {
+                    $token = $tokenResult.Token
+                    Write-Log "Successfully acquired token using standard approach"
+                }
+            }
+            catch {
+                Write-Log "Failed to get token using standard approach: $($_.Exception.Message)" -Type "WARNING"
+            }
         }
         
-        $tokenUrl = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
-        
-        $body = @{
-            client_id     = $ClientId
-            scope         = "https://graph.microsoft.com/.default"
-            client_secret = $ClientSecret
-            grant_type    = "client_credentials"
+        if ([string]::IsNullOrEmpty($token)) {
+            Write-Log "Attempting alternative token acquisition approach"
+            
+            if (-not (Get-Module -Name Az.Accounts)) {
+                Import-Module Az.Accounts -ErrorAction Stop
+            }
+            
+            $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+            $tokenCache = $context.TokenCache
+            $cachedTokens = $tokenCache.ReadItems() | Where-Object { $_.Resource -eq "https://graph.microsoft.com" }
+            
+            if ($cachedTokens -and $cachedTokens.Count -gt 0) {
+                $latestToken = $cachedTokens | Sort-Object ExpiresOn -Descending | Select-Object -First 1
+                $token = $latestToken.AccessToken
+                Write-Log "Successfully acquired token from token cache"
+            }
         }
         
-        $response = Invoke-RestMethod -Method Post -Uri $tokenUrl -Body $body -ContentType "application/x-www-form-urlencoded"
-        Write-Log "Successfully acquired token" 
-        return $response.access_token
+        if ([string]::IsNullOrEmpty($token)) {
+            Write-Log "Attempting final fallback token acquisition approach" -Type "WARNING"
+            
+            $armToken = Get-AzAccessToken
+            
+            if ($null -ne $armToken -and $null -ne $armToken.Token) {
+                $graphToken = Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/$((Get-AzContext).Tenant.Id)/oauth2/v2.0/token" -Body @{
+                    grant_type    = "client_credentials"
+                    client_id     = $env:IDENTITY_CLIENT_ID 
+                    scope         = "https://graph.microsoft.com/.default"
+                    client_secret = $env:IDENTITY_CLIENT_SECRET 
+                } -ContentType "application/x-www-form-urlencoded"
+                
+                if ($graphToken -and $graphToken.access_token) {
+                    $token = $graphToken.access_token
+                    Write-Log "Successfully acquired token using token exchange approach"
+                }
+            }
+        }
+        
+        if ([string]::IsNullOrEmpty($token)) {
+            throw "Failed to acquire valid token from managed identity after trying multiple approaches"
+        }
+        
+        if ($token -notmatch '\..*\.') {
+            $tokenPreview = if ($token.Length -gt 20) { $token.Substring(0, 20) + "..." } else { $token }
+            throw "Acquired token does not appear to be a valid JWT. Token preview: $tokenPreview"
+        }
+        
+        Write-Log "Successfully acquired Microsoft Graph API token via Managed Identity"
+        return $token
     }
     catch {
-        Write-Log "Failed to acquire token: $_" -Type "ERROR"
-        throw "Authentication failed: $_"
+        Write-Log "Failed to acquire Microsoft Graph token using Managed Identity: $($_.Exception.Message)" -Type "ERROR"
+        throw "Authentication failed: $($_.Exception.Message)"
     }
 }
 
@@ -151,25 +194,15 @@ function Invoke-MsGraphRequestWithRetry {
     
     $retryCount = 0
     $backoffSeconds = $InitialBackoffSeconds
-    $headers = @{
-        Authorization = "Bearer $Token"
-        ConsistencyLevel = "eventual"
-    }
-    
     $params = @{
         Uri         = $Uri
-        Headers     = $headers
+        Headers     = @{ Authorization = "Bearer $Token" }
         Method      = $Method
         ContentType = $ContentType
     }
     
     if ($null -ne $Body -and $Method -ne "GET") {
-        if ($ContentType -eq "application/json") {
-            $params.Add("Body", ($Body | ConvertTo-Json -Depth 10))
-        }
-        else {
-            $params.Add("Body", $Body)
-        }
+        $params.Add("Body", ($Body | ConvertTo-Json -Depth 10))
     }
     
     while ($true) {
@@ -193,7 +226,8 @@ function Invoke-MsGraphRequestWithRetry {
                 
                 if ($statusCode -eq 429) {
                     Write-Log "Request throttled by Graph API (429). Waiting $retryAfter seconds before retry. Attempt $($retryCount+1) of $MaxRetries" -Type "WARNING"
-                } else {
+                }
+                else {
                     Write-Log "Server error (5xx). Waiting $retryAfter seconds before retry. Attempt $($retryCount+1) of $MaxRetries" -Type "WARNING"
                 }
                 
@@ -261,10 +295,14 @@ function Export-DataToExcel {
     try {
         Write-Log "Exporting data to Excel file: $FilePath"
         
+        if (-not (Get-Module -Name ImportExcel)) {
+            Import-Module ImportExcel -ErrorAction Stop
+        }
+        
         $reportInfo = [PSCustomObject]@{
-            'Report Generated'   = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-            'Generated By'       = $env:COMPUTERNAME
-            'Number of Apps'     = $Data.Count
+            'Report Generated' = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            'Generated By'     = $env:COMPUTERNAME
+            'Number of Apps'   = $Data.Count
         }
         
         $excelParams = @{
@@ -278,13 +316,14 @@ function Export-DataToExcel {
             PassThru      = $true
         }
         
-        $excel = $Data | Select-Object @{Name='Application Name';Expression={$_.displayName}}, 
-                                       @{Name='Publisher';Expression={$_.publisher}}, 
-                                       @{Name='Version';Expression={$_.version}}, 
-                                       @{Name='Device Count';Expression={$_.deviceCount}}, 
-                                       @{Name='Size in Bytes';Expression={$_.sizeInByte}}, 
-                                       @{Name='App ID';Expression={$_.id}} | 
-                 Export-Excel @excelParams
+        $excel = $Data | Select-Object @{Name = 'Application Name'; Expression = { $_.displayName } }, 
+        @{Name = 'Publisher'; Expression = { $_.publisher } }, 
+        @{Name = 'Version'; Expression = { $_.version } }, 
+        @{Name = 'Device Count'; Expression = { $_.deviceCount } }, 
+        @{Name = 'Platform'; Expression = { $_.platform } },
+        @{Name = 'Size in Bytes'; Expression = { $_.sizeInByte } }, 
+        @{Name = 'App ID'; Expression = { $_.id } } | 
+        Export-Excel @excelParams
         
         $summarySheet = $excel.Workbook.Worksheets.Add("Summary")
         $summarySheet.Cells["A1"].Value = "Report Summary"
@@ -310,8 +349,8 @@ function Export-DataToExcel {
         $row++
         
         $publisherSummary = $Data | Group-Object -Property publisher | 
-                            Sort-Object -Property Count -Descending | 
-                            Select-Object -First 10
+        Sort-Object -Property Count -Descending | 
+        Select-Object -First 10
         
         $summarySheet.Cells["A$row"].Value = "Publisher"
         $summarySheet.Cells["B$row"].Value = "App Count"
@@ -325,20 +364,37 @@ function Export-DataToExcel {
             $row++
         }
         
+        $row += 2
+        $summarySheet.Cells["A$row"].Value = "Platform Summary"
+        $summarySheet.Cells["A$row"].Style.Font.Bold = $true
+        $row++
+        
+        $platformSummary = $Data | Where-Object { ![string]::IsNullOrEmpty($_.platform) } | 
+        Group-Object -Property platform | 
+        Sort-Object -Property Count -Descending
+        
+        $summarySheet.Cells["A$row"].Value = "Platform"
+        $summarySheet.Cells["B$row"].Value = "App Count"
+        $summarySheet.Cells["A$row"].Style.Font.Bold = $true
+        $summarySheet.Cells["B$row"].Style.Font.Bold = $true
+        $row++
+        
+        foreach ($platform in $platformSummary) {
+            $summarySheet.Cells["A$row"].Value = $platform.Name
+            $summarySheet.Cells["B$row"].Value = $platform.Count
+            $row++
+        }
+        
         $summarySheet.Column(1).AutoFit()
         $summarySheet.Column(2).AutoFit()
         
         try {
             $excel.Workbook.Worksheets[0].View.TabSelected = $false
             $summarySheet.View.TabSelected = $true
+            $excel.Workbook.View.ActiveTab = 1
         }
         catch {
-            try {
-                $excel.Workbook.View.ActiveTab = 1
-            }
-            catch {
-                Write-Log "Could not set the active sheet, but this is not critical for report generation" -Type "WARNING"
-            }
+            Write-Log "Could not set the active sheet, but this is not critical for report generation" -Type "WARNING"
         }
         
         $excel.Save()
@@ -367,24 +423,152 @@ function Upload-FileToSharePoint {
     try {
         Write-Log "Uploading file to SharePoint..."
         
-        $fileContent = [System.IO.File]::ReadAllBytes($FilePath)
-        $fileSize = $fileContent.Length
-        
-        $uploadPath = if ([string]::IsNullOrEmpty($FolderPath)) {
-            $FileName
-        } else {
-            "$FolderPath/$FileName"
+        if (-not (Test-Path $FilePath)) {
+            throw "File does not exist at path: $FilePath"
         }
         
-        $uploadUri = "https://graph.microsoft.com/v1.0/sites/$SiteId/drives/$DriveId/root:/$uploadPath`:/content"
+        $fileInfo = Get-Item -Path $FilePath
+        $fileSize = $fileInfo.Length
         
-        Write-Log "Uploading file to: $uploadUri"
         Write-Log "File size: $fileSize bytes"
         
-        $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $uploadUri -Method "PUT" -Body $fileContent -ContentType "application/octet-stream" -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
-        
-        Write-Log "File uploaded successfully. WebUrl: $($response.webUrl)"
-        return $response
+        if ($fileSize -gt 4000000) {
+            Write-Log "Using large file upload session approach for file over 4MB"
+            
+            $uploadPath = if ([string]::IsNullOrEmpty($FolderPath)) {
+                $FileName
+            }
+            else {
+                "$FolderPath/$FileName"
+            }
+            
+            $createSessionUri = "https://graph.microsoft.com/v1.0/sites/$SiteId/drives/$DriveId/root:/$uploadPath`:/createUploadSession"
+            $createSessionBody = @{
+                item = @{
+                    "@microsoft.graph.conflictBehavior" = "replace"
+                }
+            }
+            
+            $uploadSession = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $createSessionUri -Method "POST" -Body $createSessionBody -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+            
+            if (-not $uploadSession -or -not $uploadSession.uploadUrl) {
+                throw "Failed to create upload session"
+            }
+            
+            $chunkSize = 3 * 1024 * 1024
+            $fileStream = [System.IO.File]::OpenRead($FilePath)
+            $buffer = New-Object byte[] $chunkSize
+            $bytesRead = 0
+            $position = 0
+            
+            try {
+                while (($bytesRead = $fileStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                    if ($bytesRead -lt $buffer.Length) {
+                        $actualBuffer = New-Object byte[] $bytesRead
+                        [Array]::Copy($buffer, $actualBuffer, $bytesRead)
+                        $buffer = $actualBuffer
+                    }
+                    
+                    $contentRange = "bytes $position-$($position + $bytesRead - 1)/$fileSize"
+                    $headers = @{
+                        "Authorization" = "Bearer $Token"
+                        "Content-Range" = $contentRange
+                    }
+                    
+                    $uploadChunkParams = @{
+                        Uri         = $uploadSession.uploadUrl
+                        Method      = "PUT"
+                        Headers     = $headers
+                        Body        = $buffer
+                        ContentType = "application/octet-stream"
+                    }
+                    
+                    Write-Log "Uploading chunk: $contentRange"
+                    
+                    $retryCount = 0
+                    $success = $false
+                    
+                    while (-not $success -and $retryCount -lt $MaxRetries) {
+                        try {
+                            $response = Invoke-RestMethod @uploadChunkParams
+                            $success = $true
+                            
+                            if ($response.id) {
+                                Write-Log "File upload completed. WebUrl: $($response.webUrl)"
+                                return $response
+                            }
+                        }
+                        catch {
+                            $retryCount++
+                            $backoffSeconds = $InitialBackoffSeconds * [Math]::Pow(2, $retryCount - 1)
+                            
+                            if ($retryCount -lt $MaxRetries) {
+                                Write-Log "Chunk upload failed. Retrying in $backoffSeconds seconds. Attempt $retryCount of $MaxRetries. Error: $_" -Type "WARNING"
+                                Start-Sleep -Seconds $backoffSeconds
+                            }
+                            else {
+                                throw $_
+                            }
+                        }
+                    }
+                    
+                    $position += $bytesRead
+                }
+            }
+            finally {
+                $fileStream.Close()
+                $fileStream.Dispose()
+            }
+            
+            throw "File upload did not complete properly"
+        }
+        else {
+            Write-Log "Using direct upload approach for smaller file"
+            
+            $uploadPath = if ([string]::IsNullOrEmpty($FolderPath)) {
+                $FileName
+            }
+            else {
+                "$FolderPath/$FileName"
+            }
+            
+            $uploadUri = "https://graph.microsoft.com/v1.0/sites/$SiteId/drives/$DriveId/root:/$uploadPath`:/content"
+            
+            Write-Log "Uploading file to: $uploadUri"
+            
+            $boundary = [System.Guid]::NewGuid().ToString()
+            $LF = "`r`n"
+            
+            $fileBytes = [System.IO.File]::ReadAllBytes($FilePath)
+            $bodyLines = @(
+                "--$boundary",
+                "Content-Disposition: form-data; name=`"file`"; filename=`"$FileName`"",
+                "Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "",
+                [System.Text.Encoding]::UTF8.GetString($fileBytes),
+                "--$boundary--",
+                ""
+            )
+            
+            $body = $bodyLines -join $LF
+            
+            $headers = @{
+                "Authorization" = "Bearer $Token"
+            }
+            
+            $params = @{
+                Uri         = $uploadUri
+                Method      = "PUT"
+                Headers     = $headers
+                Body        = $fileBytes 
+                ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+            
+            $response = Invoke-RestMethod @params
+            
+            Write-Log "File uploaded successfully. WebUrl: $($response.webUrl)"
+            return $response
+        }
     }
     catch {
         Write-Log "Failed to upload file to SharePoint: $_" -Type "ERROR"
@@ -407,36 +591,36 @@ function Send-TeamsNotification {
         $executionTime = [math]::Round($ReportData.ExecutionTimeMinutes, 2)
         
         $adaptiveCard = @{
-            type = "message"
+            type        = "message"
             attachments = @(
                 @{
                     contentType = "application/vnd.microsoft.card.adaptive"
-                    contentUrl = $null
-                    content = @{
+                    contentUrl  = $null
+                    content     = @{
                         "$schema" = "http://adaptivecards.io/schemas/adaptive-card.json"
-                        type = "AdaptiveCard"
-                        version = "1.2"
-                        msTeams = @{
+                        type      = "AdaptiveCard"
+                        version   = "1.2"
+                        msTeams   = @{
                             width = "full"
                         }
-                        body = @(
+                        body      = @(
                             @{
-                                type = "TextBlock"
-                                size = "Large"
+                                type   = "TextBlock"
+                                size   = "Large"
                                 weight = "Bolder"
-                                text = "Intune Discovered Apps Report"
-                                wrap = $true
-                                color = "Default"
+                                text   = "Intune Discovered Apps Report"
+                                wrap   = $true
+                                color  = "Default"
                             },
                             @{
-                                type = "TextBlock"
-                                spacing = "None"
-                                text = "Report generated on $($ReportData.Timestamp)"
-                                wrap = $true
+                                type     = "TextBlock"
+                                spacing  = "None"
+                                text     = "Report generated on $($ReportData.Timestamp)"
+                                wrap     = $true
                                 isSubtle = $true
                             },
                             @{
-                                type = "FactSet"
+                                type  = "FactSet"
                                 facts = @(
                                     @{
                                         title = "Report Name:"
@@ -453,11 +637,11 @@ function Send-TeamsNotification {
                                 )
                             }
                         )
-                        actions = @(
+                        actions   = @(
                             @{
-                                type = "Action.OpenUrl"
+                                type  = "Action.OpenUrl"
                                 title = "View Report"
-                                url = $ReportData.ReportUrl
+                                url   = $ReportData.ReportUrl
                             }
                         )
                     }
@@ -491,11 +675,11 @@ try {
     
     if (-not (Get-Module -ListAvailable -Name ImportExcel)) {
         Write-Log "ImportExcel module not found. Installing..." -Type "WARNING"
-        Install-Module -Name ImportExcel -Force -Scope CurrentUser
+        Install-Module -Name ImportExcel -Force -Scope CurrentUser -ErrorAction Stop
     }
-    Import-Module ImportExcel
+    Import-Module ImportExcel -ErrorAction Stop
     
-    $token = Get-MsGraphToken -TenantId $TenantId -ClientId $ClientId -ClientSecret $ClientSecret
+    $token = Get-MsGraphToken
     
     $discoveredApps = Get-IntuneDiscoveredApps -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds -BatchSize $BatchSize
     
@@ -510,6 +694,34 @@ try {
     
     Export-DataToExcel -Data $discoveredApps -FilePath $tempPath
     
+    if (Test-Path -Path $tempPath) {
+        $fileInfo = Get-Item -Path $tempPath
+        Write-Log "Excel file created with size: $($fileInfo.Length) bytes"
+        
+        if ($fileInfo.Length -lt 10000) {
+            Write-Log "Warning: Excel file appears to be very small ($($fileInfo.Length) bytes), which might indicate a formatting issue" -Type "WARNING"
+        }
+        
+        # Verify it's a proper Excel file by checking the file signature
+        $fileBytes = [System.IO.File]::ReadAllBytes($tempPath)
+        $excelSignature = [byte[]]@(80, 75, 3, 4) # PK\003\004 - ZIP file signature (Excel files are ZIP-based)
+        $isValidExcel = $true
+        
+        for ($i = 0; $i -lt 4; $i++) {
+            if ($fileBytes[$i] -ne $excelSignature[$i]) {
+                $isValidExcel = $false
+                break
+            }
+        }
+        
+        if (-not $isValidExcel) {
+            Write-Log "Warning: File does not appear to be a valid Excel file based on its signature" -Type "WARNING"
+        }
+        else {
+            Write-Log "File signature verification passed - appears to be a valid Excel file"
+        }
+    }
+    
     $uploadResult = Upload-FileToSharePoint -Token $token -SiteId $SharePointSiteId -DriveId $SharePointDriveId -FolderPath $FolderPath -FilePath $tempPath -FileName $reportName -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
     
     Remove-Item -Path $tempPath -Force
@@ -522,18 +734,19 @@ try {
     Write-Log "Report URL: $($uploadResult.webUrl)"
     
     $result = [PSCustomObject]@{
-        ReportName      = $reportName
-        AppsCount       = $discoveredApps.Count
-        ReportUrl       = $uploadResult.webUrl
+        ReportName           = $reportName
+        AppsCount            = $discoveredApps.Count
+        ReportUrl            = $uploadResult.webUrl
         ExecutionTimeMinutes = $duration.TotalMinutes
-        Timestamp       = $currentDate
+        Timestamp            = $currentDate
     }
     
     if (-not [string]::IsNullOrEmpty($TeamsWebhookUrl)) {
         $notificationSent = Send-TeamsNotification -WebhookUrl $TeamsWebhookUrl -ReportData $result
         if ($notificationSent) {
             $result | Add-Member -MemberType NoteProperty -Name "NotificationSent" -Value $true
-        } else {
+        }
+        else {
             $result | Add-Member -MemberType NoteProperty -Name "NotificationSent" -Value $false
         }
     }
