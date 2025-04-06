@@ -39,7 +39,7 @@
 .NOTES
     File Name: Get-IntuneDiscoveredAppsReport.ps1
     Author: Ryan Schultz
-    Version: 1.0
+    Version: 1.1
     Created: 2025-04-04
 
     Requires -Modules ImportExcel
@@ -423,25 +423,152 @@ function Upload-FileToSharePoint {
     try {
         Write-Log "Uploading file to SharePoint..."
         
-        $fileContent = [System.IO.File]::ReadAllBytes($FilePath)
-        $fileSize = $fileContent.Length
-        
-        $uploadPath = if ([string]::IsNullOrEmpty($FolderPath)) {
-            $FileName
-        }
-        else {
-            "$FolderPath/$FileName"
+        if (-not (Test-Path $FilePath)) {
+            throw "File does not exist at path: $FilePath"
         }
         
-        $uploadUri = "https://graph.microsoft.com/v1.0/sites/$SiteId/drives/$DriveId/root:/$uploadPath`:/content"
+        $fileInfo = Get-Item -Path $FilePath
+        $fileSize = $fileInfo.Length
         
-        Write-Log "Uploading file to: $uploadUri"
         Write-Log "File size: $fileSize bytes"
         
-        $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $uploadUri -Method "PUT" -Body $fileContent -ContentType "application/octet-stream" -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
-        
-        Write-Log "File uploaded successfully. WebUrl: $($response.webUrl)"
-        return $response
+        if ($fileSize -gt 4000000) {
+            Write-Log "Using large file upload session approach for file over 4MB"
+            
+            $uploadPath = if ([string]::IsNullOrEmpty($FolderPath)) {
+                $FileName
+            }
+            else {
+                "$FolderPath/$FileName"
+            }
+            
+            $createSessionUri = "https://graph.microsoft.com/v1.0/sites/$SiteId/drives/$DriveId/root:/$uploadPath`:/createUploadSession"
+            $createSessionBody = @{
+                item = @{
+                    "@microsoft.graph.conflictBehavior" = "replace"
+                }
+            }
+            
+            $uploadSession = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $createSessionUri -Method "POST" -Body $createSessionBody -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+            
+            if (-not $uploadSession -or -not $uploadSession.uploadUrl) {
+                throw "Failed to create upload session"
+            }
+            
+            $chunkSize = 3 * 1024 * 1024
+            $fileStream = [System.IO.File]::OpenRead($FilePath)
+            $buffer = New-Object byte[] $chunkSize
+            $bytesRead = 0
+            $position = 0
+            
+            try {
+                while (($bytesRead = $fileStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                    if ($bytesRead -lt $buffer.Length) {
+                        $actualBuffer = New-Object byte[] $bytesRead
+                        [Array]::Copy($buffer, $actualBuffer, $bytesRead)
+                        $buffer = $actualBuffer
+                    }
+                    
+                    $contentRange = "bytes $position-$($position + $bytesRead - 1)/$fileSize"
+                    $headers = @{
+                        "Authorization" = "Bearer $Token"
+                        "Content-Range" = $contentRange
+                    }
+                    
+                    $uploadChunkParams = @{
+                        Uri         = $uploadSession.uploadUrl
+                        Method      = "PUT"
+                        Headers     = $headers
+                        Body        = $buffer
+                        ContentType = "application/octet-stream"
+                    }
+                    
+                    Write-Log "Uploading chunk: $contentRange"
+                    
+                    $retryCount = 0
+                    $success = $false
+                    
+                    while (-not $success -and $retryCount -lt $MaxRetries) {
+                        try {
+                            $response = Invoke-RestMethod @uploadChunkParams
+                            $success = $true
+                            
+                            if ($response.id) {
+                                Write-Log "File upload completed. WebUrl: $($response.webUrl)"
+                                return $response
+                            }
+                        }
+                        catch {
+                            $retryCount++
+                            $backoffSeconds = $InitialBackoffSeconds * [Math]::Pow(2, $retryCount - 1)
+                            
+                            if ($retryCount -lt $MaxRetries) {
+                                Write-Log "Chunk upload failed. Retrying in $backoffSeconds seconds. Attempt $retryCount of $MaxRetries. Error: $_" -Type "WARNING"
+                                Start-Sleep -Seconds $backoffSeconds
+                            }
+                            else {
+                                throw $_
+                            }
+                        }
+                    }
+                    
+                    $position += $bytesRead
+                }
+            }
+            finally {
+                $fileStream.Close()
+                $fileStream.Dispose()
+            }
+            
+            throw "File upload did not complete properly"
+        }
+        else {
+            Write-Log "Using direct upload approach for smaller file"
+            
+            $uploadPath = if ([string]::IsNullOrEmpty($FolderPath)) {
+                $FileName
+            }
+            else {
+                "$FolderPath/$FileName"
+            }
+            
+            $uploadUri = "https://graph.microsoft.com/v1.0/sites/$SiteId/drives/$DriveId/root:/$uploadPath`:/content"
+            
+            Write-Log "Uploading file to: $uploadUri"
+            
+            $boundary = [System.Guid]::NewGuid().ToString()
+            $LF = "`r`n"
+            
+            $fileBytes = [System.IO.File]::ReadAllBytes($FilePath)
+            $bodyLines = @(
+                "--$boundary",
+                "Content-Disposition: form-data; name=`"file`"; filename=`"$FileName`"",
+                "Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "",
+                [System.Text.Encoding]::UTF8.GetString($fileBytes),
+                "--$boundary--",
+                ""
+            )
+            
+            $body = $bodyLines -join $LF
+            
+            $headers = @{
+                "Authorization" = "Bearer $Token"
+            }
+            
+            $params = @{
+                Uri         = $uploadUri
+                Method      = "PUT"
+                Headers     = $headers
+                Body        = $fileBytes 
+                ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+            
+            $response = Invoke-RestMethod @params
+            
+            Write-Log "File uploaded successfully. WebUrl: $($response.webUrl)"
+            return $response
+        }
     }
     catch {
         Write-Log "Failed to upload file to SharePoint: $_" -Type "ERROR"
@@ -571,8 +698,27 @@ try {
         $fileInfo = Get-Item -Path $tempPath
         Write-Log "Excel file created with size: $($fileInfo.Length) bytes"
         
-        if ($fileInfo.Length -lt 1000) {
-            Write-Log "Warning: Excel file appears to be very small, which might indicate a formatting issue" -Type "WARNING"
+        if ($fileInfo.Length -lt 10000) {
+            Write-Log "Warning: Excel file appears to be very small ($($fileInfo.Length) bytes), which might indicate a formatting issue" -Type "WARNING"
+        }
+        
+        # Verify it's a proper Excel file by checking the file signature
+        $fileBytes = [System.IO.File]::ReadAllBytes($tempPath)
+        $excelSignature = [byte[]]@(80, 75, 3, 4) # PK\003\004 - ZIP file signature (Excel files are ZIP-based)
+        $isValidExcel = $true
+        
+        for ($i = 0; $i -lt 4; $i++) {
+            if ($fileBytes[$i] -ne $excelSignature[$i]) {
+                $isValidExcel = $false
+                break
+            }
+        }
+        
+        if (-not $isValidExcel) {
+            Write-Log "Warning: File does not appear to be a valid Excel file based on its signature" -Type "WARNING"
+        }
+        else {
+            Write-Log "File signature verification passed - appears to be a valid Excel file"
         }
     }
     
