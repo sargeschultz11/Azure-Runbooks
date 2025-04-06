@@ -18,19 +18,10 @@ This automation helps IT administrators maintain better visibility into device c
 - An Azure Automation account
 - The ImportExcel PowerShell module installed in the Automation account
 - Authentication using either:
-  - **Option 1: Azure AD App Registration** with the following:
-    - Client ID
-    - Client Secret
-    - Proper Microsoft Graph API permissions:
-      - `DeviceManagementManagedDevices.Read.All` or `DeviceManagementManagedDevices.ReadWrite.All`
-      - `Sites.ReadWrite.All` (for SharePoint upload functionality)
-  - **Option 2: System-assigned Managed Identity** with the following:
+  - **Recommended: System-assigned Managed Identity** with the following:
     - Managed Identity enabled on the Azure Automation account
-    - The same Microsoft Graph API permissions assigned to the Managed Identity
-- If using App Registration, the following variables defined in the Automation account:
-  - `TenantId`: Your Azure AD tenant ID
-  - `ClientId`: The App Registration's client ID
-  - `ClientSecret`: The App Registration's client secret (stored as an encrypted variable)
+    - Microsoft Graph API permissions assigned to the Managed Identity using the included `Add-GraphPermissions.ps1` helper script
+  - **Alternative: Azure AD App Registration** (legacy approach)
 - For Azure Automation with Managed Identity, the Az.Accounts module installed
 - A SharePoint site ID and document library drive ID where the report will be uploaded
 
@@ -38,10 +29,7 @@ This automation helps IT administrators maintain better visibility into device c
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| TenantId | String | No | Your Azure AD tenant ID. If not provided, will be retrieved from Automation variables. Not needed if using Managed Identity. |
-| ClientId | String | No | The App Registration's client ID. If not provided, will be retrieved from Automation variables. Not needed if using Managed Identity. |
-| ClientSecret | String | No | The App Registration's client secret. If not provided, will be retrieved from Automation variables. Not needed if using Managed Identity. |
-| UseManagedIdentity | Switch | No | When specified, the script will use the Managed Identity of the Azure Automation account for authentication instead of App Registration credentials. |
+| UseManagedIdentity | Switch | No | When specified, the script will use the Managed Identity of the Azure Automation account for authentication. This is now the default and recommended authentication method. |
 | SharePointSiteId | String | Yes | The ID of the SharePoint site where the report will be uploaded. |
 | SharePointDriveId | String | Yes | The ID of the document library drive where the report will be uploaded. |
 | FolderPath | String | No | The folder path within the document library for upload. Default is root. |
@@ -58,12 +46,14 @@ A table with the following columns:
 - Device Name
 - User
 - Email
+- UPN (User Principal Name)
 - Device Owner
 - Device Type
 - OS
 - OS Version
 - Compliance State
 - Compliance Policies
+- Policy Statuses
 - Last Sync
 - Enrolled Date
 - Serial Number
@@ -79,30 +69,9 @@ A table with the following columns:
 
 ## Setup Instructions
 
-You can choose between two authentication methods: App Registration (service principal) or Managed Identity.
+The recommended authentication method is using a System-assigned Managed Identity.
 
-### Option 1: Using App Registration
-
-#### 1. Create an Azure AD Application Registration
-1. In the Azure Portal, navigate to Azure Active Directory > App registrations > New registration
-2. Name the application (e.g., "Intune Compliance Reporting")
-3. Select the appropriate supported account type (typically Single tenant)
-4. Click Register
-
-#### 2. Assign API Permissions
-1. In the app registration, navigate to API permissions
-2. Click "Add a permission" > Microsoft Graph > Application permissions
-3. Add the following permissions:
-   - DeviceManagementManagedDevices.Read.All (or ReadWrite.All)
-   - Sites.ReadWrite.All
-4. Click "Grant admin consent"
-
-#### 3. Create a Client Secret
-1. In the app registration, navigate to Certificates & secrets
-2. Create a new client secret with an appropriate expiration
-3. Copy the secret value (you won't be able to retrieve it later)
-
-### Option 2: Using Managed Identity (Recommended)
+### Using Managed Identity (Recommended)
 
 #### 1. Enable System-assigned Managed Identity
 1. Navigate to your Azure Automation account
@@ -111,17 +80,28 @@ You can choose between two authentication methods: App Registration (service pri
 4. Click Save
 
 #### 2. Assign API Permissions to the Managed Identity
-1. Go to Azure Active Directory > Enterprise applications
-2. Find the managed identity (it will have the same name as your Automation account)
-3. Go to Permissions > Add permission > Microsoft Graph > Application permissions
-4. Add the following permissions:
-   - DeviceManagementManagedDevices.Read.All (or ReadWrite.All)
-   - Sites.ReadWrite.All
-5. Click "Grant admin consent"
+Use the included `Add-GraphPermissions.ps1` script to assign the required permissions:
 
-#### 3. Install Required Modules
+1. Install the Microsoft.Graph.Applications module if not already installed:
+   ```powershell
+   Install-Module -Name Microsoft.Graph.Applications -Force
+   ```
+
+2. Run the script with your Automation Account's MSI Object ID:
+   ```powershell
+   .\Add-GraphPermissions.ps1 -AutomationMSI_ID "<YOUR_AUTOMATION_ACCOUNT_MSI_OBJECT_ID>"
+   ```
+
+This script will assign the following permissions:
+- DeviceManagementManagedDevices.Read.All
+- DeviceManagementConfiguration.Read.All
+- Sites.ReadWrite.All
+
+#### 3. Install Required Modules in Azure Automation
 1. In your Azure Automation account, go to Modules
-2. Add the Az.Accounts module if it's not already installed
+2. Add the following modules if not already installed:
+   - Az.Accounts
+   - ImportExcel
 
 ### 4. Get SharePoint Site and Drive IDs
 1. You'll need the SharePoint site ID and document library drive ID where reports will be uploaded
@@ -129,32 +109,23 @@ You can choose between two authentication methods: App Registration (service pri
    - Site ID format: `sitecollections/{site-collection-id}/sites/{site-id}`
    - Drive ID format: `b!{encoded-drive-id}`
 
-### 5. Set Up Azure Automation Account
-1. Create or use an existing Azure Automation account
-2. Import the ImportExcel module
-   - Browse to Modules > Browse gallery > Search for "ImportExcel" > Import
-3. Create the following Automation variables:
-   - Name: TenantId, Type: String, Value: Your tenant ID
-   - Name: ClientId, Type: String, Value: Your application's client ID
-   - Name: ClientSecret, Type: String, Value: Your client secret, Encrypted: Yes
-
-### 6. Import the Runbook
+### 5. Import the Runbook
 1. In the Automation account, go to Runbooks > Import a runbook
 2. Upload the Get-IntuneDeviceComplianceReport.ps1 file
 3. Set the runbook type to PowerShell
 
-### 7. Schedule the Runbook
+### 6. Schedule the Runbook
 1. Navigate to the runbook > Schedules > Add a schedule
 2. Create a new schedule or link to an existing one
 3. Configure the parameters, including SharePointSiteId and SharePointDriveId
 
-### 8. Optional: Set Up Teams Notification
+### 7. Optional: Set Up Teams Notification
 1. Create a Teams webhook connector in your desired Teams channel
 2. Copy the webhook URL
 3. Add the TeamsWebhookUrl parameter when scheduling the runbook
 
 ## Execution Flow
-1. **Authentication**: The script authenticates to Microsoft Graph API.
+1. **Authentication**: The script authenticates to Microsoft Graph API using the system-assigned Managed Identity.
 2. **Data Retrieval**: Gets all managed devices from Intune with their compliance states.
 3. **Policy Lookup**: Retrieves compliance policy details and matches them to devices.
 4. **Excel Report Generation**: Creates the Excel report with device data and compliance summaries.
@@ -196,14 +167,6 @@ The script includes comprehensive error handling:
 - Temporary files are cleaned up even when errors occur
 - Module dependencies are checked and installed if missing
 
-## Notes
-- For large environments with thousands of devices, consider adjusting the BatchSize parameter
-- The ImportExcel module must be imported into the Azure Automation account
-- The report includes all enrolled devices across platforms (Windows, iOS, Android, MacOS)
-- Make sure the SharePoint folder path exists before running the script
-- Teams notifications include an adaptive card with compliance rate and a direct link to the report
-- The script uses the Microsoft Graph beta endpoint to retrieve more detailed compliance information
-
 ## Security Best Practices
 
 ### Managed Identity vs App Registration
@@ -219,6 +182,5 @@ Using a managed identity is the recommended authentication method for Azure Auto
 
 - When using Managed Identity, ensure that the Az.Accounts module is installed in your Azure Automation account
 - For hybrid worker scenarios, you may need to grant additional permissions for the managed identity
-- Follow the principle of least privilege and carefully assign only permissions required to execute your runbooks.
-- System-assigned identities are automatically deleted when the resource is deleted, while user-assigned identities have independent lifecycles.
-- Role assignments aren't automatically deleted when managed identities are deleted, so remember to clean up permissions when they're no longer needed
+- Follow the principle of least privilege and carefully assign only permissions required to execute your runbooks
+- System-assigned identities are automatically deleted when the resource is deleted
