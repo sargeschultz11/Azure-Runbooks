@@ -1,7 +1,7 @@
 # Get-DevicesWithAppReport.ps1
 
 ## Overview
-This Azure Automation runbook generates a comprehensive report of all devices that have a specific application installed in your Intune environment. The script identifies devices with the specified app (using the App ID from the Intune Discovered Apps report), creates a detailed Excel report, and uploads it to a SharePoint document library for easy access.
+This Azure Automation runbook generates a comprehensive report of all devices that have a specific application installed in your Intune environment. The script identifies devices with the specified app (using the App ID from the [Intune Discovered Apps report](../Report-DiscoveredApps/README.md) also available in this repository), creates a detailed Excel report, and uploads it to a SharePoint document library for easy access.
 
 > **Note:** This solution is particularly valuable for smaller organizations or those without Enterprise/Premium licensing tiers that include Microsoft Defender for Endpoint or Microsoft Sentinel. Organizations with these advanced security products can use their built-in query capabilities for more efficient app discovery reporting.
 
