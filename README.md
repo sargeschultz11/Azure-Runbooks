@@ -4,35 +4,57 @@ A collection of Azure Automation runbooks for Microsoft 365 and Intune managemen
 
 ## Overview
 
-This repository contains PowerShell scripts designed to be used as Azure Automation runbooks for automating various Microsoft 365 and Intune management tasks. These scripts help streamline administrative processes, maintain consistency across your environment, and reduce manual overhead. This repo is a fresh project so it will be updated with more runbooks in the near future.
+This repository contains PowerShell scripts designed to be used as Azure Automation runbooks for automating various Microsoft 365 and Intune management tasks. These scripts help streamline administrative processes, maintain consistency across your environment, and reduce manual overhead.
 
-## Available Runbooks
+## Repository Structure
 
-### Device Category Sync
+The repository is organized into folders, with each folder containing a specific runbook solution:
 
-**[Update-IntuneDeviceCategories.ps1](DeviceCategorySync/Update-IntuneDeviceCategories.ps1)** - Automatically updates Intune device categories to match the primary user's department.
+```
+Azure-Runbooks/
+├── DeviceCategorySync/             # Sync device categories with user departments
+├── Report-DiscoveredApps/          # Generate reports of discovered applications
+├── Report-IntuneDeviceCompliance/  # Generate device compliance reports
+├── Report-DevicesWithApp/          # Find devices with specific applications
+└── [future runbooks]/              # More solutions will be added
+```
 
-- Processes Windows, iOS, Android, and Linux devices
-- Maps device categories to user departments
-- Supports batch processing to avoid API throttling
-- Includes detailed logging and error handling
-- See the [DeviceCategorySync README](DeviceCategorySync/README.md) for detailed documentation
+Each runbook folder contains:
+- The main PowerShell script (`.ps1`)
+- A helper script for setting up permissions (`Add-GraphPermissions.ps1`)
+- Detailed documentation (`README.md`)
+
+## Authentication
+
+All runbooks in this repository are designed to use Azure Automation's System-Assigned Managed Identity for authentication, which is the recommended approach for Azure Automation. Each folder includes an `Add-GraphPermissions.ps1` script that helps assign the necessary Microsoft Graph API permissions to your Automation Account's Managed Identity.
 
 ## Getting Started
 
 Each runbook includes detailed documentation for implementation and usage. In general, to use these runbooks:
 
 1. Import the script into your Azure Automation account
-2. Configure necessary variables and credentials
-3. Create a schedule or link to a webhook
-4. Review logs and output after execution
+2. Enable System-Assigned Managed Identity on your Automation account
+3. Use the included `Add-GraphPermissions.ps1` script to assign necessary Graph API permissions
+4. Configure any required parameters specific to your environment
+5. Create a schedule or link to a webhook for execution
+6. Review logs and output after execution
 
 ## Requirements
 
 - Azure Automation account
-- Appropriate Microsoft Graph API permissions
-- Necessary service principal or managed identity with required permissions
-- Pre-configured Azure Automation variables as specified in each runbook
+- Appropriate Microsoft Graph API permissions (varies by runbook)
+- Required PowerShell modules (specified in each runbook's documentation)
+- Pre-configured Azure Automation variables (if specified in a runbook)
+
+## Available Solutions
+
+### Device Management
+- **Device Category Sync**: Automatically update Intune device categories based on the primary user's department.
+
+### Reporting
+- **Discovered Apps Report**: Generate comprehensive reports of all applications discovered across your managed devices.
+- **Device Compliance Report**: Create detailed reports on device compliance status.
+- **Devices with Specific App Report**: Identify all devices with a specific application installed.
 
 ## Contributing
 
@@ -42,6 +64,3 @@ Feel free to use these scripts as a starting point for your own automation needs
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Author
-
-Ryan Schultz
