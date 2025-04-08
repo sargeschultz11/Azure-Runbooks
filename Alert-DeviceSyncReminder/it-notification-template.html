@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    p {
+      color: #555;
+      margin-bottom: 15px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th {
+      background-color: #f2f2f2;
+      padding: 10px 8px;
+      text-align: left;
+      border: 1px solid #ddd;
+      font-weight: bold;
+    }
+    td {
+      padding: 8px;
+      border: 1px solid #ddd;
+      vertical-align: top;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 0.9em;
+      color: #666;
+      text-align: center;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
+    .summary {
+      background-color: #f8f8f8;
+      border-left: 4px solid #4285f4;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .warning {
+      color: #e53935;
+      font-weight: bold;
+    }
+    .device-count {
+      font-weight: bold;
+      color: #e53935;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="$LogoUrl" alt="Company Logo" width="150" />
+    </div>
+    <h2>Intune Devices Without Primary Users</h2>
+    
+    <div class="summary">
+      <p><span class="device-count">$DeviceCount</span> devices have not synced in the past $DaysSinceLastSync days and do not have a primary user assigned. These devices require IT attention.</p>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Device Name</th>
+          <th>OS</th>
+          <th>Model</th>
+          <th>Serial Number</th>
+          <th>Last Sync Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        $DeviceTableRows
+      </tbody>
+    </table>
+    
+    <p>These devices may need:</p>
+    <ul>
+      <li>Primary user assignment</li>
+      <li>Manual sync initiation</li>
+      <li>Investigation for connectivity issues</li>
+      <li>Possible retirement if no longer in use</li>
+    </ul>
+    
+    <p>Please review these devices and take appropriate action to ensure they remain compliant and secure. Devices without assigned users cannot receive the automated sync reminder emails sent to end users.</p>
+
+    <p>For a complete view of all devices, please check the Intune portal.</p>
+
+    <div class="footer">
+      <p>This is an automated message from the Intune Device Management System.</p>
+      <p>Report generated on: $CurrentDate</p>
+    </div>
+  </div>
+</body>
+</html>
