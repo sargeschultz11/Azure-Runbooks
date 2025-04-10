@@ -440,12 +440,27 @@ function Send-SyncReminderEmail {
     
     <h3>Sync Your Device</h3>
     
+    <!-- PLATFORM_TABS_START -->
     <div class="platform-tabs">
+      <!-- WINDOWS_TAB_START -->
       <div class="tab">Windows</div>
+      <!-- WINDOWS_TAB_END -->
+      
+      <!-- IOS_TAB_START -->
       <div class="tab">iOS/iPadOS</div>
-      <div class="tab">Android</div>
-      <div class="tab">macOS</div>
+      <!-- IOS_TAB_END -->
+      
+      <!-- ANDROID_TAB_START -->
+      <!-- <div class="tab">Android</div> -->
+      <!-- ANDROID_TAB_END -->
+      
+      <!-- MACOS_TAB_START -->
+      <!-- <div class="tab">macOS</div> -->
+      <!-- MACOS_TAB_END -->
+    </div>
+    <!-- PLATFORM_TABS_END -->
     
+    <!-- IOS_INSTRUCTIONS_START -->
     <h4>For iOS/iPadOS Devices:</h4>
     <ol class="steps">
       <li>Ensure your device is powered on and connected to the internet (Wi-Fi or cellular).</li>
@@ -454,16 +469,20 @@ function Send-SyncReminderEmail {
       <li>Select your device from the list.</li>
       <li>Tap on <strong>Check Status</strong> or <strong>Sync</strong> to initiate a sync.</li>
     </ol>
+    <!-- IOS_INSTRUCTIONS_END -->
 
-    <h4>For Android Devices:</h4>
+    <!-- ANDROID_INSTRUCTIONS_START -->
+    <!-- <h4>For Android Devices:</h4>
     <ol class="steps">
       <li>Ensure your device is powered on and connected to the internet.</li>
       <li>Open the <strong>Company Portal</strong> app on your device.</li>
       <li>Tap the menu icon (three lines) in the top left corner.</li>
       <li>Tap <strong>Devices</strong>, then select your device.</li>
       <li>Tap <strong>Check Status</strong> or <strong>Sync Device</strong>.</li>
-    </ol>
+    </ol> -->
+    <!-- ANDROID_INSTRUCTIONS_END -->
 
+    <!-- WINDOWS_INSTRUCTIONS_START -->
     <h4>For Windows Devices:</h4>
     <ol class="steps">
       <li>Ensure your device is powered on and connected to the internet.</li>
@@ -472,43 +491,56 @@ function Send-SyncReminderEmail {
       <li>Select your device from the list of devices.</li>
       <li>Click <strong>Sync this device</strong> or click the menu icon in the taskbar and select <strong>Sync this device</strong>.</li>
     </ol>
+    <!-- WINDOWS_INSTRUCTIONS_END -->
 
-    <h4>For macOS Devices:</h4>
+    <!-- MACOS_INSTRUCTIONS_START -->
+    <!-- <h4>For macOS Devices:</h4>
     <ol class="steps">
       <li>Ensure your device is powered on and connected to the internet.</li>
       <li>Open the <strong>Company Portal</strong> app on your Mac.</li>
       <li>Select your device from the list of devices.</li>
       <li>Click the <strong>Sync</strong> button to initiate a sync.</li>
-    </ol>
+    </ol> -->
+    <!-- MACOS_INSTRUCTIONS_END -->
 
+    <!-- UPDATES_SECTION_START -->
     <h3>Check for Updates</h3>
     <p>While syncing, also check for any pending updates:</p>
 
+    <!-- IOS_UPDATES_START -->
     <h4>For iOS/iPadOS Devices:</h4>
     <ol class="steps">
       <li>Go to <strong>Settings</strong> > <strong>General</strong> > <strong>Software Update</strong>.</li>
       <li>If updates are available, tap <strong>Download and Install</strong>.</li>
     </ol>
+    <!-- IOS_UPDATES_END -->
 
-    <h4>For Android Devices:</h4>
+    <!-- ANDROID_UPDATES_START -->
+    <!-- <h4>For Android Devices:</h4>
     <ol class="steps">
       <li>Open <strong>Settings</strong> > <strong>System</strong> > <strong>System update</strong> or <strong>Software update</strong> (may vary by device).</li>
       <li>Tap <strong>Check for updates</strong> and install if available.</li>
-    </ol>
+    </ol> -->
+    <!-- ANDROID_UPDATES_END -->
 
+    <!-- WINDOWS_UPDATES_START -->
     <h4>For Windows Devices:</h4>
     <ol class="steps">
       <li>Open <strong>Settings</strong> > <strong>Windows Update</strong>.</li>
       <li>Click <strong>Check for updates</strong> and install any available updates.</li>
       <li>Restart your device if prompted.</li>
     </ol>
+    <!-- WINDOWS_UPDATES_END -->
 
-    <h4>For macOS Devices:</h4>
+    <!-- MACOS_UPDATES_START -->
+    <!-- <h4>For macOS Devices:</h4>
     <ol class="steps">
       <li>Click the Apple menu > <strong>System Settings</strong> or <strong>System Preferences</strong>.</li>
       <li>Select <strong>Software Update</strong>.</li>
       <li>Click <strong>Update Now</strong> if updates are available.</li>
-    </ol>
+    </ol> -->
+    <!-- MACOS_UPDATES_END -->
+    <!-- UPDATES_SECTION_END -->
 
     <div class="note">
       <p><strong>Why this matters:</strong> Regular syncing ensures your device receives the latest security policies and configurations. Keeping your device updated helps protect your data and our organization's network.</p>
