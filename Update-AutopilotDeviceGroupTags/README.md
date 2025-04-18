@@ -78,7 +78,7 @@ The script produces a PowerShell custom object with the following properties:
 This script is particularly useful:
 
 1. **After Device Category Synchronization**: Run this script after the Update-IntuneDeviceCategories.ps1 script to ensure consistent categorization.
-2. **During Bulk Device Operations**: After importing new hardware or reassigning devices to different departments/categories.
+2. **During Bulk Device Operations**: After enrolling new devices or reassigning devices to different departments/categories.
 3. **Before Autopilot Redeployment**: Ensure group tags are updated before devices go through Autopilot again.
 4. **For Governance and Audit**: Periodically run to ensure consistency between provisioning configuration and management configuration.
 
