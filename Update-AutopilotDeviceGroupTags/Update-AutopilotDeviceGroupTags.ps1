@@ -132,7 +132,12 @@ function Invoke-MsGraphRequestWithRetry {
     }
     
     if ($null -ne $Body -and $Method -ne "GET") {
-        $params.Add("Body", ($Body | ConvertTo-Json -Depth 10))
+        # Handle string body (pre-formatted JSON) or object body
+        if ($Body -is [string]) {
+            $params.Add("Body", $Body)
+        } else {
+            $params.Add("Body", ($Body | ConvertTo-Json -Depth 10))
+        }
     }
     
     while ($true) {
@@ -273,11 +278,14 @@ function Update-AutopilotDeviceGroupTag {
         else {
             Write-Log "Updating Autopilot device group tag for device with serial number $SerialNumber from '$CurrentGroupTag' to '$NewGroupTag'"
             
-            $uri = "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$DeviceId/updateDeviceProperties"
-            $body = @{
-                groupTag = $NewGroupTag
-            }
-            Invoke-MsGraphRequestWithRetry -Token $Token -Uri $uri -Method "PATCH" -Body $body -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+            $uri = "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$DeviceId/UpdateDeviceProperties"
+            $requestBody = @"
+{
+    "groupTag": "$NewGroupTag"
+}
+"@
+            
+            Invoke-MsGraphRequestWithRetry -Token $Token -Uri $uri -Method "POST" -Body $requestBody -ContentType "application/json" -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
             Write-Log "Successfully updated Autopilot device group tag"
             return $true
         }
