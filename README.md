@@ -60,6 +60,29 @@ Each runbook includes detailed documentation for implementation and usage. In ge
 - **Device Compliance Report**: Create detailed reports on device compliance status.
 - **Devices with Specific App Report**: Identify all devices with a specific application installed.
 
+## Branch Management
+
+This repository follows a simplified Git workflow:
+
+- The `main` branch contains stable, production-ready scripts
+- Development branches are created for new features or significant modifications
+- Once development work is merged into `main`, the development branches are typically deleted
+- For users who have cloned this repository, note that development branches may disappear after their work is completed
+
+If you're working with a specific development branch, consider creating your own fork to ensure your work isn't affected when branches are deleted.
+
+## Discussions
+
+I've enabled GitHub Discussions for this repository to foster collaboration and support among users. This is the best place to:
+
+* Ask questions about implementing specific runbooks
+* Share your success stories and implementations 
+* Suggest new runbook ideas or improvements
+* Discuss best practices for Azure Automation
+* Get help with troubleshooting
+
+Check out the [Discussions](https://github.com/sargeschultz11/Azure-Runbooks/discussions) tab to join the conversation. We encourage you to use Discussions for general questions and community interaction, while Issues should be used for reporting bugs or specific problems with the scripts.
+
 ## Contributing
 
 Feel free to use these scripts as a starting point for your own automation needs. Contributions, improvements, and suggestions are welcome!
