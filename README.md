@@ -16,6 +16,8 @@ Azure-Runbooks/
 ├── Report-DiscoveredApps/          # Generate reports of discovered applications
 ├── Report-IntuneDeviceCompliance/  # Generate device compliance reports
 ├── Report-DevicesWithApp/          # Find devices with specific applications
+├── Alert-DeviceSyncReminder/       # Send reminders for devices needing sync
+├── Update-AutopilotDeviceGroupTags/ # Sync Autopilot group tags with Intune categories
 └── [future runbooks]/              # More solutions will be added
 ```
 
@@ -50,6 +52,8 @@ Each runbook includes detailed documentation for implementation and usage. In ge
 
 ### Device Management
 - **Device Category Sync**: Automatically update Intune device categories based on the primary user's department.
+- **Autopilot Group Tag Sync**: Synchronize Windows Autopilot device group tags with their corresponding Intune device categories.
+- **Device Sync Reminder**: Identify devices that haven't synced in a specified period and send email notifications to their primary users.
 
 ### Reporting
 - **Discovered Apps Report**: Generate comprehensive reports of all applications discovered across your managed devices.
@@ -63,4 +67,3 @@ Feel free to use these scripts as a starting point for your own automation needs
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
