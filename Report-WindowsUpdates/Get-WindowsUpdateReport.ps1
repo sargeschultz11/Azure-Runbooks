@@ -1,9 +1,10 @@
+# Requires -Modules "Az.Accounts"
 <#
 .SYNOPSIS
     Generates a Windows Update compliance dashboard using Log Analytics data.
 
 .DESCRIPTION
-    This Azure Automation runbook connects to a Log Analytics workspace using a System-Assigned Managed Identity,
+    This Azure Runbook script connects to a Log Analytics workspace using a System-Assigned Managed Identity,
     queries Windows Update activity, and maintains a persistent Excel dashboard file in SharePoint.
     The dashboard tracks update compliance over time, extending beyond the Log Analytics retention period.
 
@@ -82,7 +83,6 @@ $dashboardFileName = "Windows_Update_Dashboard.xlsx"
 $dashboardFilePath = $null
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
-# Main script execution
 try {
     Write-Log "=== Windows Update Dashboard Generation Started ==="
     Write-Log "MonthsToQuery parameter value: $MonthsToQuery"
@@ -248,14 +248,25 @@ $validTable
         Write-Log "Dashboard file doesn't exist yet, will create new one" -Type "INFO"
         $fileExists = $false
     }
+    
+    # FIX: Create a new array and properly combine historical data with new summary data
+    $combinedHistoricalData = @()
+    
+    # Add historical data, excluding current month
     if ($historicalData.Count -gt 0) {
-        $updatedHistoricalData = $historicalData | Where-Object { $_.Month -ne $currentMonthDisplay }
-        $updatedHistoricalData += $summaryData
-        $historicalData = $updatedHistoricalData | Sort-Object -Property Month -Unique
+        $filteredHistoricalData = $historicalData | Where-Object { $_.Month -ne $currentMonthDisplay }
+        foreach ($record in $filteredHistoricalData) {
+            $combinedHistoricalData += $record
+        }
     }
-    else {
-        $historicalData = $summaryData
+    
+    # Add new summary data
+    foreach ($record in $summaryData) {
+        $combinedHistoricalData += $record
     }
+    
+    # Use the combined data for further processing
+    $historicalData = $combinedHistoricalData
     
     $historicalData = $historicalData | Sort-Object -Property { 
         try {
