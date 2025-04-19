@@ -16,6 +16,8 @@ Azure-Runbooks/
 ├── Report-DiscoveredApps/          # Generate reports of discovered applications
 ├── Report-IntuneDeviceCompliance/  # Generate device compliance reports
 ├── Report-DevicesWithApp/          # Find devices with specific applications
+├── Alert-DeviceSyncReminder/       # Send reminders for devices needing sync
+├── Update-AutopilotDeviceGroupTags/ # Sync Autopilot group tags with Intune categories
 └── [future runbooks]/              # More solutions will be added
 ```
 
@@ -50,11 +52,36 @@ Each runbook includes detailed documentation for implementation and usage. In ge
 
 ### Device Management
 - **Device Category Sync**: Automatically update Intune device categories based on the primary user's department.
+- **Autopilot Group Tag Sync**: Synchronize Windows Autopilot device group tags with their corresponding Intune device categories.
+- **Device Sync Reminder**: Identify devices that haven't synced in a specified period and send email notifications to their primary users.
 
 ### Reporting
 - **Discovered Apps Report**: Generate comprehensive reports of all applications discovered across your managed devices.
 - **Device Compliance Report**: Create detailed reports on device compliance status.
 - **Devices with Specific App Report**: Identify all devices with a specific application installed.
+
+## Branch Management
+
+This repository follows a simplified Git workflow:
+
+- The `main` branch contains stable, production-ready scripts
+- Development branches are created for new features or significant modifications
+- Once development work is merged into `main`, the development branches are typically deleted
+- For users who have cloned this repository, note that development branches may disappear after their work is completed
+
+If you're working with a specific development branch, consider creating your own fork to ensure your work isn't affected when branches are deleted.
+
+## Discussions
+
+I've enabled GitHub Discussions for this repository to foster collaboration and support among users. This is the best place to:
+
+* Ask questions about implementing specific runbooks
+* Share your success stories and implementations 
+* Suggest new runbook ideas or improvements
+* Discuss best practices for Azure Automation
+* Get help with troubleshooting
+
+Check out the [Discussions](https://github.com/sargeschultz11/Azure-Runbooks/discussions) tab to join the conversation. We encourage you to use Discussions for general questions and community interaction, while Issues should be used for reporting bugs or specific problems with the scripts.
 
 ## Contributing
 
@@ -63,4 +90,3 @@ Feel free to use these scripts as a starting point for your own automation needs
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
