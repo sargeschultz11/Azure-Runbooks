@@ -3,6 +3,8 @@
 ## Overview
 This Azure Automation runbook automatically generates a comprehensive Windows Update compliance dashboard using Log Analytics data and maintains it as a persistent Excel file in SharePoint. The dashboard provides visibility into Windows Update compliance across your device fleet, helping you track update status over time even beyond the Log Analytics retention period.
 
+> **IMPORTANT:** This solution requires your tenant to be configured with Windows Update for Business (WUfB) reporting to a Log Analytics workspace. The script will not work without this configuration in place.
+
 ## Key Features
 - **Persistent Compliance Tracking**: Maintains historical update compliance data beyond Log Analytics retention limits
 - **SharePoint Integration**: Automatically stores and updates the dashboard in a SharePoint library
@@ -16,7 +18,8 @@ This Azure Automation runbook automatically generates a comprehensive Windows Up
   - ImportExcel
   - Az.Accounts
   - Az.OperationalInsights
-- A Log Analytics workspace that collects Windows Update data
+- **Windows Update for Business (WUfB) configuration** properly set up to send update data to Log Analytics
+- A Log Analytics workspace that actively collects Windows Update data
 - A SharePoint site and document library for storing the dashboard
 - Optional: A Teams webhook URL for sending notifications
 
@@ -81,7 +84,15 @@ Provide evidence of compliance for audits or regulatory requirements.
 
 ## Setup Instructions
 
-### 1. Get SharePoint Site ID and Drive ID
+### 1. Configure Windows Update for Business Reporting
+1. Configure your devices to send Windows Update data to Log Analytics through:
+   - Intune policies for Windows Update for Business
+   - Group Policy for domain-joined devices
+   - The necessary diagnostic data settings must be enabled
+2. Verify data is flowing by checking for update entries in your Log Analytics workspace
+3. Allow sufficient time (typically 24-48 hours) for initial data collection before running the script
+
+### 2. Get SharePoint Site ID and Drive ID
 1. Navigate to your SharePoint site
 2. Use Microsoft Graph Explorer or PowerShell to retrieve:
    - Site ID format: `sitecollections/{site-collection-id}/sites/{site-id}`
@@ -116,6 +127,13 @@ When creating a schedule or starting the runbook, provide the following paramete
 2. Link it to the runbook with your parameter values
 
 ## Troubleshooting
+
+### Windows Update for Business Configuration
+If the script isn't finding any update data:
+1. Verify that Windows Update for Business is properly configured in your environment
+2. Confirm that your devices are configured to send update telemetry to Log Analytics
+3. Check Intune policies or Group Policies that control Windows Update reporting settings
+4. Ensure devices have successfully checked in and reported update status
 
 ### Log Analytics Table Detection
 The script automatically tries several common Windows Update table names:
