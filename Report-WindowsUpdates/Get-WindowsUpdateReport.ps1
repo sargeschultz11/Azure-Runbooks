@@ -29,7 +29,7 @@
     The ID of the Log Analytics workspace to query for update data.
 
 .NOTES
-    File Name: Get-WindowsUpdateDashboard.ps1
+    File Name: Get-WindowsUpdateReport.ps1
     Author: Ryan Schultz (Enhanced by Claude)
     Version: 4.0
     Updated: 2025-04-19
@@ -407,8 +407,31 @@ function Create-ComplianceReport {
             }
         })
         
-        # Create Excel file
+        # Create Excel file - check if it already exists first
         $excel = New-Object -TypeName OfficeOpenXml.ExcelPackage -ArgumentList $OutputPath
+        
+        # Check if worksheets already exist and remove them to avoid the 'already exists' error
+        try {
+            if ($excel.Workbook.Worksheets["Dashboard"]) {
+                $excel.Workbook.Worksheets.Delete("Dashboard")
+                Write-Log "Removed existing Dashboard worksheet"
+            }
+            if ($excel.Workbook.Worksheets["Device Status"]) {
+                $excel.Workbook.Worksheets.Delete("Device Status")
+                Write-Log "Removed existing Device Status worksheet"
+            }
+            if ($excel.Workbook.Worksheets["Historical Data"]) {
+                $excel.Workbook.Worksheets.Delete("Historical Data")
+                Write-Log "Removed existing Historical Data worksheet"
+            }
+            if ($excel.Workbook.Worksheets["Compliance Trend"]) {
+                $excel.Workbook.Worksheets.Delete("Compliance Trend")
+                Write-Log "Removed existing Compliance Trend worksheet"
+            }
+        }
+        catch {
+            Write-Log "Warning when clearing existing worksheets: $_" -Type "WARNING"
+        }
         
         # Create dashboard sheet
         $dashboardSheet = $excel.Workbook.Worksheets.Add("Dashboard")
