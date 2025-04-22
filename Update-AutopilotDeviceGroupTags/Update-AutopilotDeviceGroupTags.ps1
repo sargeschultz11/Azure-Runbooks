@@ -27,9 +27,9 @@
 .NOTES
     File Name: Update-AutopilotDeviceGroupTags.ps1
     Author: Ryan Schultz
-    Version: 1.0
+    Version: 1.1
     Created: 2025-04-10
-    Updated: 2025-04-18
+    Updated: 2025-04-22
     
     Companion script to Update-IntuneDeviceCategories.ps1
     
@@ -84,30 +84,32 @@ function Write-Log {
 }
 
 function Get-MsGraphToken {
-    param (
-        [switch]$UseManagedIdentity = $true
-    )
-    
     try {
-        Write-Log "Acquiring Microsoft Graph token using Managed Identity..."
-        
-        Write-Log "Connecting to Azure with managed identity..."
+        Write-Log "Authenticating with Managed Identity..."
         Connect-AzAccount -Identity | Out-Null
-        
-        Write-Log "Successfully connected to Azure, retrieving access token..."
-        $token = (Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com").Token
-        
-        if (-not [string]::IsNullOrEmpty($token)) {
-            Write-Log "Successfully acquired token using Managed Identity"
-            return $token
+
+        $tokenObj = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com"
+
+        if ($tokenObj.Token -is [System.Security.SecureString]) {
+            Write-Log "Token is SecureString, converting to plain text..."
+            $token = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($tokenObj.Token)
+            )
+        } else {
+            Write-Log "Token is plain string, no conversion needed."
+            $token = $tokenObj.Token
         }
-        else {
-            throw "Failed to acquire token - token is empty"
+
+        if (-not [string]::IsNullOrEmpty($token)) {
+            Write-Log "Token acquired successfully."
+            return $token
+        } else {
+            throw "Token was empty."
         }
     }
     catch {
-        Write-Log "Failed to acquire Microsoft Graph token using Managed Identity: $_" -Type "ERROR"
-        throw "Authentication failed: $_"
+        Write-Error "Failed to acquire Microsoft Graph token using Managed Identity: $_"
+        throw
     }
 }
 

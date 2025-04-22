@@ -39,7 +39,7 @@
 .NOTES
     File Name: Get-IntuneDiscoveredAppsReport.ps1
     Author: Ryan Schultz
-    Version: 1.1
+    Version: 1.2
     Created: 2025-04-04
 
     Requires -Modules ImportExcel
@@ -102,82 +102,31 @@ function Write-Log {
 
 function Get-MsGraphToken {
     try {
-        Write-Log "Acquiring Microsoft Graph token using Managed Identity..."
-        
+        Write-Log "Authenticating with Managed Identity..."
         Connect-AzAccount -Identity | Out-Null
-        
-        $azAccountsModule = Get-Module -Name Az.Accounts -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
-        Write-Log "Using Az.Accounts module version: $($azAccountsModule.Version)"
-        
-        $token = $null
-        
-        if ($azAccountsModule.Version.Major -ge 2) {
-            try {
-                $tokenResult = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com"
-                
-                if ($null -ne $tokenResult -and $null -ne $tokenResult.Token) {
-                    $token = $tokenResult.Token
-                    Write-Log "Successfully acquired token using standard approach"
-                }
-            }
-            catch {
-                Write-Log "Failed to get token using standard approach: $($_.Exception.Message)" -Type "WARNING"
-            }
+
+        $tokenObj = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com"
+
+        if ($tokenObj.Token -is [System.Security.SecureString]) {
+            Write-Log "Token is SecureString, converting to plain text..."
+            $token = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($tokenObj.Token)
+            )
+        } else {
+            Write-Log "Token is plain string, no conversion needed."
+            $token = $tokenObj.Token
         }
-        
-        if ([string]::IsNullOrEmpty($token)) {
-            Write-Log "Attempting alternative token acquisition approach"
-            
-            if (-not (Get-Module -Name Az.Accounts)) {
-                Import-Module Az.Accounts -ErrorAction Stop
-            }
-            
-            $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
-            $tokenCache = $context.TokenCache
-            $cachedTokens = $tokenCache.ReadItems() | Where-Object { $_.Resource -eq "https://graph.microsoft.com" }
-            
-            if ($cachedTokens -and $cachedTokens.Count -gt 0) {
-                $latestToken = $cachedTokens | Sort-Object ExpiresOn -Descending | Select-Object -First 1
-                $token = $latestToken.AccessToken
-                Write-Log "Successfully acquired token from token cache"
-            }
+
+        if (-not [string]::IsNullOrEmpty($token)) {
+            Write-Log "Token acquired successfully."
+            return $token
+        } else {
+            throw "Token was empty."
         }
-        
-        if ([string]::IsNullOrEmpty($token)) {
-            Write-Log "Attempting final fallback token acquisition approach" -Type "WARNING"
-            
-            $armToken = Get-AzAccessToken
-            
-            if ($null -ne $armToken -and $null -ne $armToken.Token) {
-                $graphToken = Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/$((Get-AzContext).Tenant.Id)/oauth2/v2.0/token" -Body @{
-                    grant_type    = "client_credentials"
-                    client_id     = $env:IDENTITY_CLIENT_ID 
-                    scope         = "https://graph.microsoft.com/.default"
-                    client_secret = $env:IDENTITY_CLIENT_SECRET 
-                } -ContentType "application/x-www-form-urlencoded"
-                
-                if ($graphToken -and $graphToken.access_token) {
-                    $token = $graphToken.access_token
-                    Write-Log "Successfully acquired token using token exchange approach"
-                }
-            }
-        }
-        
-        if ([string]::IsNullOrEmpty($token)) {
-            throw "Failed to acquire valid token from managed identity after trying multiple approaches"
-        }
-        
-        if ($token -notmatch '\..*\.') {
-            $tokenPreview = if ($token.Length -gt 20) { $token.Substring(0, 20) + "..." } else { $token }
-            throw "Acquired token does not appear to be a valid JWT. Token preview: $tokenPreview"
-        }
-        
-        Write-Log "Successfully acquired Microsoft Graph API token via Managed Identity"
-        return $token
     }
     catch {
-        Write-Log "Failed to acquire Microsoft Graph token using Managed Identity: $($_.Exception.Message)" -Type "ERROR"
-        throw "Authentication failed: $($_.Exception.Message)"
+        Write-Error "Failed to acquire Microsoft Graph token using Managed Identity: $_"
+        throw
     }
 }
 
