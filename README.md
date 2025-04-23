@@ -21,6 +21,7 @@ Azure-Runbooks/
 ├── Alert-IntuneAppleTokenMonitor/  # Monitor Apple token expirations
 ├── Report-UserManagers/            # Generate reports of users and their managers
 ├── Report-MissingSecurityUpdates/  # Report on devices missing security updates
+├── Sync-IntuneDevices/             # Force sync all managed Intune devices
 └── [future runbooks]/              # More solutions will be added
 ```
 
@@ -57,6 +58,7 @@ Each runbook includes detailed documentation for implementation and usage. In ge
 - **Device Category Sync**: Automatically update Intune device categories based on the primary user's department.
 - **Autopilot Group Tag Sync**: Synchronize Windows Autopilot device group tags with their corresponding Intune device categories.
 - **Device Sync Reminder**: Identify devices that haven't synced in a specified period and send email notifications to their primary users.
+- **Intune Device Sync**: Force synchronize all devices in your Intune environment with batch processing and throttling protection.
 
 ### Security and Compliance
 - **Intune Apple Token Monitor**: Monitor expiration dates of Apple Push Notification certificates, VPP tokens, and DEP tokens in Microsoft Intune and send proactive alerts through Microsoft Teams.
