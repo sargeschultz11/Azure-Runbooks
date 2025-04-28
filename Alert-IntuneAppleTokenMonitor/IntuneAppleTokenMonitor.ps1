@@ -26,6 +26,7 @@
     - DeviceManagementServiceConfig.Read.All
     - DeviceManagementConfiguration.Read.All
     - DeviceManagementApps.Read.All
+    - Organization.Read.All
 #>
 
 param(

@@ -18,6 +18,7 @@ This automation helps organizations prevent service disruptions that can occur w
   - `DeviceManagementServiceConfig.Read.All`
   - `DeviceManagementConfiguration.Read.All`
   - `DeviceManagementApps.Read.All`
+  - `Organization.Read.All`
 - The Az.Accounts PowerShell module must be imported into your Azure Automation account
 - A Microsoft Teams webhook for receiving notifications
 
@@ -52,9 +53,10 @@ You can use the standard `Add-GraphPermissions.ps1` script (available in other r
 Make sure to use these permission IDs in the script:
 ```powershell
 $GraphPermissionsList = @(
-    @{Name = "DeviceManagementServiceConfig.Read.All"; Id = "dc377aa6-52d8-4e23-b271-2a7ae04cedf3"},
+    @{Name = "DeviceManagementServiceConfig.Read.All"; Id = "06a5fe6d-c49d-46a7-b082-56b1b14103c7"},
     @{Name = "DeviceManagementConfiguration.Read.All"; Id = "dc377aa6-52d8-4e23-b271-2a7ae04cedf3"},
-    @{Name = "DeviceManagementApps.Read.All"; Id = "7a6ee1e7-141e-4cec-ae74-d9db155731ff"}
+    @{Name = "DeviceManagementApps.Read.All"; Id = "7a6ee1e7-141e-4cec-ae74-d9db155731ff"},
+    @{Name = "Organization.Read.All"; Id = "498476ce-e0fe-48b0-b801-37ba7e2685c6"}
 )
 ```
 
