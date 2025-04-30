@@ -83,7 +83,7 @@ param(
     [string]$TestEmailAddress = "",
     
     [Parameter(Mandatory = $false)]
-    [string]$LogoUrl = "https://img.logoipsum.com/363.svg",
+    [string]$LogoUrl = "https://raw.githubusercontent.com/sargeschultz11/Azure-Runbooks/dev/sync-reminder/assets/repo_logo.png",
 
     [Parameter(Mandatory = $false)]
     [string]$SupportEmail = "",
