@@ -1,7 +1,7 @@
 # Azure-Runbooks 
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/sargeschultz11/Azure-Runbooks/dev/sync-reminder/assets/repo_logo.png" alt="Logo" width="200"/>
+  <img src="https://raw.githubusercontent.com/sargeschultz11/Azure-Runbooks/dev/sync-reminder/assets/repo_logo.png" alt="Logo" width="500"/>
 </div>
 
 
