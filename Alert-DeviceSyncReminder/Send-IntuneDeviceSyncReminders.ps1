@@ -363,242 +363,109 @@ function Send-SyncReminderEmail {
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Device Sync Required</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Sync Required</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; background-color: #f9f9f9; margin: 0; padding: 0;">
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-    <tr>
-      <td style="padding: 20px;">
-        <!-- Logo -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%">
-          <tr>
-            <td align="center" style="padding-bottom: 20px;">
-              <img src="$LogoUrl" alt="Company Logo" width="150" style="display: block;" />
-            </td>
-          </tr>
-        </table>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0;">
+    <div style="max-width: 800px; margin: 0 auto; border: 1px solid #ddd;">
+        <!-- Header Section -->
+        <div style="background-color: #0078D4; color: white; padding: 20px; text-align: center;">
+            <img src="$LogoUrl" alt="Company Logo" width="150" style="display: inline-block;">
+            <h2 style="margin-top: 15px; margin-bottom: 0;">Action Required: Device Sync Overdue</h2>
+        </div>
         
-        <!-- Header -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%">
-          <tr>
-            <td align="center" style="padding-bottom: 20px;">
-              <h2 style="color: #333; margin: 0;">Action Required: Device Sync Overdue</h2>
-            </td>
-          </tr>
-        </table>
-        
-        <!-- Intro Text -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%">
-          <tr>
-            <td style="padding-bottom: 20px; color: #555;">
-              <p>Hello $Username,</p>
-              <p>Your device, <strong>$DeviceName</strong>, has not synced with Intune since <strong>$LastSyncTime</strong>. To ensure your device remains compliant and secure, please perform the following steps:</p>
-            </td>
-          </tr>
-        </table>
-        
-        <!-- Sync Section Header -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%">
-          <tr>
-            <td style="padding-bottom: 10px;">
-              <h3 style="color: #333; margin: 0;">Sync Your Device</h3>
-            </td>
-          </tr>
-        </table>
-        
-        <!-- Platform Tabs - Using Background Colors Instead of Flex -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 15px; border-bottom: 1px solid #ddd;">
-          <tr>
-            <!-- WINDOWS_TAB_START -->
-            <td style="padding: 10px 15px; background-color: #f1f1f1; border-radius: 5px 5px 0 0; font-weight: bold; width: 33%;">
-              Windows
-            </td>
-            <!-- WINDOWS_TAB_END -->
+        <!-- Content Section -->
+        <div style="padding: 20px;">
+            <!-- Intro -->
+            <div style="margin-bottom: 20px;">
+                <p>Hello $Username,</p>
+                <p>Your device, <strong>$DeviceName</strong>, has not synced with Intune since <strong>$LastSyncTime</strong>. To ensure your device remains compliant and secure, please perform the following steps:</p>
+            </div>
             
-            <!-- IOS_TAB_START -->
-            <td style="padding: 10px 15px; background-color: #f1f1f1; border-radius: 5px 5px 0 0; font-weight: bold; width: 33%;">
-              iOS/iPadOS
-            </td>
-            <!-- IOS_TAB_END -->
+            <!-- Sync Section -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Sync Your Device</h3>
+                
+                <!-- Windows Instructions -->
+                <!-- WINDOWS_INSTRUCTIONS_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For Windows Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Ensure your device is powered on and connected to the internet.</li>
+                    <li style="margin-bottom: 8px;">Click on the Start menu and search for "Company Portal".</li>
+                    <li style="margin-bottom: 8px;">Open the <strong>Company Portal</strong> app.</li>
+                    <li style="margin-bottom: 8px;">Select the Settings icon in the bottom left corner.</li>
+                    <li style="margin-bottom: 8px;">Click the <strong>Sync</strong> button to initiate a sync.</li>
+                </ol>
+                <!-- WINDOWS_INSTRUCTIONS_END -->
+                
+                <!-- iOS Instructions -->
+                <!-- IOS_INSTRUCTIONS_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For iOS/iPadOS Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Ensure your device is powered on and connected to the internet (Wi-Fi or cellular).</li>
+                    <li style="margin-bottom: 8px;">Open the <strong>Company Portal</strong> app on your device.</li>
+                    <li style="margin-bottom: 8px;">Tap on <strong>Devices</strong> at the bottom of the screen.</li>
+                    <li style="margin-bottom: 8px;">Select your device from the list.</li>
+                    <li style="margin-bottom: 8px;">Tap on <strong>Check Status</strong> or <strong>Sync</strong> to initiate a sync.</li>
+                </ol>
+                <!-- IOS_INSTRUCTIONS_END -->
+                
+                <!-- Android Instructions -->
+                <!-- ANDROID_INSTRUCTIONS_START -->
+                <!-- <h4 style="margin-top: 20px; margin-bottom: 10px;">For Android Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Ensure your device is powered on and connected to the internet.</li>
+                    <li style="margin-bottom: 8px;">Open the <strong>Company Portal</strong> app on your device.</li>
+                    <li style="margin-bottom: 8px;">Tap the menu icon (three lines) in the top left corner.</li>
+                    <li style="margin-bottom: 8px;">Tap <strong>Devices</strong>, then select your device.</li>
+                    <li style="margin-bottom: 8px;">Tap <strong>Check Status</strong> or <strong>Sync Device</strong>.</li>
+                </ol> -->
+                <!-- ANDROID_INSTRUCTIONS_END -->
+            </div>
             
-            <!-- ANDROID_TAB_START -->
-            <!-- <td style="padding: 10px 15px; background-color: #f1f1f1; border-radius: 5px 5px 0 0; font-weight: bold; width: 33%;">
-              Android
-            </td> -->
-            <!-- ANDROID_TAB_END -->
+            <!-- UPDATES_SECTION_START -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Check for Updates</h3>
+                <p>While syncing, also check for any pending updates:</p>
+                
+                <!-- Windows Updates -->
+                <!-- WINDOWS_UPDATES_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For Windows Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Open <strong>Settings</strong> > <strong>Windows Update</strong>.</li>
+                    <li style="margin-bottom: 8px;">Click <strong>Check for updates</strong> and install any available updates.</li>
+                    <li style="margin-bottom: 8px;">Restart your device if prompted.</li>
+                </ol>
+                <!-- WINDOWS_UPDATES_END -->
+                
+                <!-- iOS Updates -->
+                <!-- IOS_UPDATES_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For iOS/iPadOS Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Go to <strong>Settings</strong> > <strong>General</strong> > <strong>Software Update</strong>.</li>
+                    <li style="margin-bottom: 8px;">If updates are available, tap <strong>Download and Install</strong>.</li>
+                </ol>
+                <!-- IOS_UPDATES_END -->
+            </div>
+            <!-- UPDATES_SECTION_END -->
             
-            <td style="width: 34%;">&nbsp;</td>
-          </tr>
-        </table>
+            <!-- Why This Matters Section -->
+            <div style="margin: 25px 0; padding: 15px; background-color: #f8f8f8; border-left: 4px solid #007bff;">
+                <p style="margin: 0;"><strong>Why this matters:</strong> Regular syncing ensures your device receives the latest security policies and configurations. Keeping your device updated helps protect your data and our organization's network.</p>
+            </div>
+            
+            <!-- Support Info -->
+            <div style="margin-top: 20px;">
+                <p>If you encounter any issues or need assistance, please contact the IT Help Desk at <a href="mailto:$SupportEmail" style="color: #007bff; text-decoration: underline;">$SupportEmail</a> or call $SupportPhone.</p>
+            </div>
+        </div>
         
-        <!-- iOS Instructions -->
-        <!-- IOS_INSTRUCTIONS_START -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
-          <tr>
-            <td>
-              <h4 style="margin-top: 20px; margin-bottom: 10px; color: #444;">For iOS/iPadOS Devices:</h4>
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">1. Ensure your device is powered on and connected to the internet (Wi-Fi or cellular).</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">2. Open the <strong>Company Portal</strong> app on your device.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">3. Tap on <strong>Devices</strong> at the bottom of the screen.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">4. Select your device from the list.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">5. Tap on <strong>Check Status</strong> or <strong>Sync</strong> to initiate a sync.</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-        <!-- IOS_INSTRUCTIONS_END -->
-
-        <!-- Android Instructions -->
-        <!-- ANDROID_INSTRUCTIONS_START -->
-        <!-- <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
-          <tr>
-            <td>
-              <h4 style="margin-top: 20px; margin-bottom: 10px; color: #444;">For Android Devices:</h4>
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">1. Ensure your device is powered on and connected to the internet.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">2. Open the <strong>Company Portal</strong> app on your device.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">3. Tap the menu icon (three lines) in the top left corner.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">4. Tap <strong>Devices</strong>, then select your device.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">5. Tap <strong>Check Status</strong> or <strong>Sync Device</strong>.</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table> -->
-        <!-- ANDROID_INSTRUCTIONS_END -->
-
-        <!-- Windows Instructions -->
-        <!-- WINDOWS_INSTRUCTIONS_START -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
-          <tr>
-            <td>
-              <h4 style="margin-top: 20px; margin-bottom: 10px; color: #444;">For Windows Devices:</h4>
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">1. Ensure your device is powered on and connected to the internet.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">2. Click on the Start menu and search for "Company Portal".</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">3. Open the <strong>Company Portal</strong> app.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">4. Select the Settings icon in the bottom left corner.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">5. Click the <strong>Sync</strong> button to initiate a sync.</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-        <!-- WINDOWS_INSTRUCTIONS_END -->
-
-        <!-- Updates Section -->
-        <!-- UPDATES_SECTION_START -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%">
-          <tr>
-            <td style="padding-bottom: 10px;">
-              <h3 style="color: #333; margin: 0;">Check for Updates</h3>
-              <p style="color: #555;">While syncing, also check for any pending updates:</p>
-            </td>
-          </tr>
-        </table>
-
-        <!-- iOS Updates -->
-        <!-- IOS_UPDATES_START -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
-          <tr>
-            <td>
-              <h4 style="margin-top: 20px; margin-bottom: 10px; color: #444;">For iOS/iPadOS Devices:</h4>
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">1. Go to <strong>Settings</strong> > <strong>General</strong> > <strong>Software Update</strong>.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">2. If updates are available, tap <strong>Download and Install</strong>.</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-        <!-- IOS_UPDATES_END -->
-
-        <!-- Windows Updates -->
-        <!-- WINDOWS_UPDATES_START -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 20px;">
-          <tr>
-            <td>
-              <h4 style="margin-top: 20px; margin-bottom: 10px; color: #444;">For Windows Devices:</h4>
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">1. Open <strong>Settings</strong> > <strong>Windows Update</strong>.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">2. Click <strong>Check for updates</strong> and install any available updates.</td>
-                </tr>
-                <tr>
-                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">3. Restart your device if prompted.</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-        <!-- WINDOWS_UPDATES_END -->
-        <!-- UPDATES_SECTION_END -->
-
-        <!-- Why This Matters Section -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 20px 0; background-color: #f8f8f8; border-left: 4px solid #007bff;">
-          <tr>
-            <td style="padding: 10px 15px;">
-              <p style="margin: 0; font-size: 0.95em;"><strong>Why this matters:</strong> Regular syncing ensures your device receives the latest security policies and configurations. Keeping your device updated helps protect your data and our organization's network.</p>
-            </td>
-          </tr>
-        </table>
-
-        <!-- Support Info -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%">
-          <tr>
-            <td style="padding-bottom: 20px; color: #555;">
-              <p>If you encounter any issues or need assistance, please contact the IT Help Desk at <a href="mailto:$SupportEmail" style="color: #007bff; text-decoration: underline;">$SupportEmail</a> or call $SupportPhone.</p>
-            </td>
-          </tr>
-        </table>
-
-        <!-- Footer -->
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">
-          <tr>
-            <td align="center" style="font-size: 0.9em; color: #666;">
-              <p style="margin: 0;"><strong>Do not reply to this message.</strong> This email was sent from an unmonitored mailbox.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+        <!-- Footer Section -->
+        <div style="padding: 15px; background-color: #f2f2f2; border-top: 1px solid #ddd; text-align: center; font-size: 14px; color: #666;">
+            <p style="margin: 0;"><strong>Do not reply to this message.</strong> This email was sent from an unmonitored mailbox.</p>
+        </div>
+    </div>
 </body>
 </html>
 "@
