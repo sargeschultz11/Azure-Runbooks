@@ -287,62 +287,54 @@ if ($expiringTokens.Count -gt 0 -and $SendEmailNotification) {
             
             $tokenTableRows += @"
 <tr>
-    <td style="padding: 8px; border: 1px solid #ddd;">$($token.TokenType)</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">$($token.Name)</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">$($token.ExpirationDate.ToString("yyyy-MM-dd"))</td>
-    <td style="padding: 8px; border: 1px solid #ddd;">$($token.DaysUntilExpiration)</td>
-    <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: $statusColor">$($token.Status)</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.TokenType)</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.Name)</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.ExpirationDate.ToString("yyyy-MM-dd"))</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.DaysUntilExpiration)</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: $statusColor; font-family: Arial, sans-serif;">$($token.Status)</td>
 </tr>
 "@
-        }
+}
         
         $emailBody = @"
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        table { border-collapse: collapse; width: 100%; }
-        th { background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; }
-        .header { background-color: #0078D4; color: white; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: 0 auto; border: 1px solid #ddd; }
-        .content { padding: 20px; }
-        .footer { background-color: #f2f2f2; padding: 10px; text-align: center; font-size: 12px; }
-    </style>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>Intune Apple Token Expiration Alert</h2>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f9f9f9;">
+    <div style="max-width: 800px; margin: 0 auto; border: 1px solid #ddd;">
+        <div style="background-color: #0078D4; color: white; padding: 20px; text-align: center;">
+            <h2 style="margin: 0; padding: 0; font-size: 24px;">Intune Apple Token Expiration Alert</h2>
         </div>
-        <div class="content">
-            <p>The following Apple tokens or certificates in your Intune environment are approaching expiration or have expired:</p>
+        <div style="padding: 20px;">
+            <p style="font-size: 16px; line-height: 1.5; color: #333;">The following Apple tokens or certificates in your Intune environment are approaching expiration or have expired:</p>
             
-            <table>
+            <table style="border-collapse: collapse; width: 100%; margin-bottom: 20px;">
                 <tr>
-                    <th>Token Type</th>
-                    <th>Name</th>
-                    <th>Expiration Date</th>
-                    <th>Days Remaining</th>
-                    <th>Status</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Token Type</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Name</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Expiration Date</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Days Remaining</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Status</th>
                 </tr>
                 $tokenTableRows
             </table>
             
-            <p><strong>Action Required:</strong> Please take immediate action to renew these tokens before they expire to avoid service disruptions.</p>
+            <p style="font-size: 16px; line-height: 1.5; color: #333;"><strong>Action Required:</strong> Please take immediate action to renew these tokens before they expire to avoid service disruptions.</p>
             
-            <h3>Renewal Process:</h3>
-            <ul>
-                <li><strong>For APNs Certificate:</strong> Generate a new CSR in the Intune admin center, use it to renew the certificate in the Apple Push Certificates Portal, and upload the renewed certificate back to Intune.</li>
-                <li><strong>For VPP Tokens:</strong> Download a new token from Apple Business Manager and upload it to Intune.</li>
-                <li><strong>For DEP Tokens:</strong> Generate a new server token in Apple Business Manager and upload it to Intune.</li>
+            <h3 style="color: #333; margin-top: 25px; font-size: 18px;">Renewal Process:</h3>
+            <ul style="margin-left: 0; padding-left: 20px;">
+                <li style="margin-bottom: 10px;"><strong>For APNs Certificate:</strong> Generate a new CSR in the Intune admin center, use it to renew the certificate in the Apple Push Certificates Portal, and upload the renewed certificate back to Intune.</li>
+                <li style="margin-bottom: 10px;"><strong>For VPP Tokens:</strong> Download a new token from Apple Business Manager and upload it to Intune.</li>
+                <li style="margin-bottom: 10px;"><strong>For DEP Tokens:</strong> Generate a new server token in Apple Business Manager and upload it to Intune.</li>
             </ul>
             
-            <p>Failure to renew these tokens before expiration may result in disruption to device management capabilities.</p>
+            <p style="font-size: 16px; line-height: 1.5; color: #333;">Failure to renew these tokens before expiration may result in disruption to device management capabilities.</p>
         </div>
-        <div class="footer">
-            <p>This is an automated notification from the Intune Monitoring System for $orgDomain</p>
-            <p>Report generated: $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))</p>
+        <div style="background-color: #f2f2f2; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+            <p style="margin: 5px 0;">This is an automated notification from the Intune Monitoring System for $orgDomain</p>
+            <p style="margin: 5px 0;">Report generated: $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))</p>
         </div>
     </div>
 </body>
