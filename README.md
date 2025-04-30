@@ -1,10 +1,5 @@
 # Azure-Runbooks 
 
-<div align="center">
-  <img src="https://raw.githubusercontent.com/sargeschultz11/Azure-Runbooks/dev/sync-reminder/assets/repo_logo.png" alt="Logo" width="500"/>
-</div>
-
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 [![Microsoft 365](https://img.shields.io/badge/Microsoft_365-compatible-brightgreen.svg)](https://www.microsoft.com/microsoft-365)
