@@ -83,7 +83,7 @@ param(
     [string]$TestEmailAddress = "",
     
     [Parameter(Mandatory = $false)]
-    [string]$LogoUrl = "",
+    [string]$LogoUrl = "https://raw.githubusercontent.com/sargeschultz11/Azure-Runbooks/dev/sync-reminder/assets/repo_logo.png",
 
     [Parameter(Mandatory = $false)]
     [string]$SupportEmail = "",
@@ -363,197 +363,109 @@ function Send-SyncReminderEmail {
 <!DOCTYPE html>
 <html>
 <head>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      background-color: #f9f9f9;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 20px auto;
-      padding: 20px;
-      background-color: #ffffff;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-    }
-    .logo {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    h2 {
-      color: #333;
-      text-align: center;
-    }
-    h3 {
-      color: #333;
-      margin-top: 25px;
-    }
-    h4 {
-      margin-top: 20px;
-      color: #444;
-    }
-    p {
-      color: #555;
-    }
-    .steps {
-      margin: 20px 0;
-      padding-left: 20px;
-    }
-    .footer {
-      margin-top: 30px;
-      font-size: 0.9em;
-      color: #666;
-      text-align: center;
-      border-top: 1px solid #eee;
-      padding-top: 15px;
-    }
-    .platform-tabs {
-      display: flex;
-      border-bottom: 1px solid #ddd;
-      margin-bottom: 15px;
-    }
-    .tab {
-      padding: 10px 15px;
-      background-color: #f1f1f1;
-      border-radius: 5px 5px 0 0;
-      margin-right: 5px;
-      font-weight: bold;
-    }
-    .note {
-      background-color: #f8f8f8;
-      border-left: 4px solid #007bff;
-      padding: 10px 15px;
-      margin: 20px 0;
-      font-size: 0.95em;
-    }
-  </style>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Sync Required</title>
 </head>
-<body>
-  <div class="container">
-    <div class="logo">
-      <img src="$LogoUrl" alt="Company Logo" width="150" />
+<body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0;">
+    <div style="max-width: 800px; margin: 0 auto; border: 1px solid #ddd;">
+        <!-- Header Section -->
+        <div style="background-color: #0078D4; color: white; padding: 20px; text-align: center;">
+            <img src="$LogoUrl" alt="Company Logo" width="150" style="display: inline-block;">
+            <h2 style="margin-top: 15px; margin-bottom: 0;">Action Required: Device Sync Overdue</h2>
+        </div>
+        
+        <!-- Content Section -->
+        <div style="padding: 20px;">
+            <!-- Intro -->
+            <div style="margin-bottom: 20px;">
+                <p>Hello $Username,</p>
+                <p>Your device, <strong>$DeviceName</strong>, has not synced with Intune since <strong>$LastSyncTime</strong>. To ensure your device remains compliant and secure, please perform the following steps:</p>
+            </div>
+            
+            <!-- Sync Section -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Sync Your Device</h3>
+                
+                <!-- Windows Instructions -->
+                <!-- WINDOWS_INSTRUCTIONS_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For Windows Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Ensure your device is powered on and connected to the internet.</li>
+                    <li style="margin-bottom: 8px;">Click on the Start menu and search for "Company Portal".</li>
+                    <li style="margin-bottom: 8px;">Open the <strong>Company Portal</strong> app.</li>
+                    <li style="margin-bottom: 8px;">Select the Settings icon in the bottom left corner.</li>
+                    <li style="margin-bottom: 8px;">Click the <strong>Sync</strong> button to initiate a sync.</li>
+                </ol>
+                <!-- WINDOWS_INSTRUCTIONS_END -->
+                
+                <!-- iOS Instructions -->
+                <!-- IOS_INSTRUCTIONS_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For iOS/iPadOS Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Ensure your device is powered on and connected to the internet (Wi-Fi or cellular).</li>
+                    <li style="margin-bottom: 8px;">Open the <strong>Company Portal</strong> app on your device.</li>
+                    <li style="margin-bottom: 8px;">Tap on <strong>Devices</strong> at the bottom of the screen.</li>
+                    <li style="margin-bottom: 8px;">Select your device from the list.</li>
+                    <li style="margin-bottom: 8px;">Tap on <strong>Check Status</strong> or <strong>Sync</strong> to initiate a sync.</li>
+                </ol>
+                <!-- IOS_INSTRUCTIONS_END -->
+                
+                <!-- Android Instructions -->
+                <!-- ANDROID_INSTRUCTIONS_START -->
+                <!-- <h4 style="margin-top: 20px; margin-bottom: 10px;">For Android Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Ensure your device is powered on and connected to the internet.</li>
+                    <li style="margin-bottom: 8px;">Open the <strong>Company Portal</strong> app on your device.</li>
+                    <li style="margin-bottom: 8px;">Tap the menu icon (three lines) in the top left corner.</li>
+                    <li style="margin-bottom: 8px;">Tap <strong>Devices</strong>, then select your device.</li>
+                    <li style="margin-bottom: 8px;">Tap <strong>Check Status</strong> or <strong>Sync Device</strong>.</li>
+                </ol> -->
+                <!-- ANDROID_INSTRUCTIONS_END -->
+            </div>
+            
+            <!-- UPDATES_SECTION_START -->
+            <div style="margin-bottom: 25px;">
+                <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Check for Updates</h3>
+                <p>While syncing, also check for any pending updates:</p>
+                
+                <!-- Windows Updates -->
+                <!-- WINDOWS_UPDATES_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For Windows Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Open <strong>Settings</strong> > <strong>Windows Update</strong>.</li>
+                    <li style="margin-bottom: 8px;">Click <strong>Check for updates</strong> and install any available updates.</li>
+                    <li style="margin-bottom: 8px;">Restart your device if prompted.</li>
+                </ol>
+                <!-- WINDOWS_UPDATES_END -->
+                
+                <!-- iOS Updates -->
+                <!-- IOS_UPDATES_START -->
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">For iOS/iPadOS Devices:</h4>
+                <ol style="margin-top: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Go to <strong>Settings</strong> > <strong>General</strong> > <strong>Software Update</strong>.</li>
+                    <li style="margin-bottom: 8px;">If updates are available, tap <strong>Download and Install</strong>.</li>
+                </ol>
+                <!-- IOS_UPDATES_END -->
+            </div>
+            <!-- UPDATES_SECTION_END -->
+            
+            <!-- Why This Matters Section -->
+            <div style="margin: 25px 0; padding: 15px; background-color: #f8f8f8; border-left: 4px solid #007bff;">
+                <p style="margin: 0;"><strong>Why this matters:</strong> Regular syncing ensures your device receives the latest security policies and configurations. Keeping your device updated helps protect your data and our organization's network.</p>
+            </div>
+            
+            <!-- Support Info -->
+            <div style="margin-top: 20px;">
+                <p>If you encounter any issues or need assistance, please contact the IT Help Desk at <a href="mailto:$SupportEmail" style="color: #007bff; text-decoration: underline;">$SupportEmail</a> or call $SupportPhone.</p>
+            </div>
+        </div>
+        
+        <!-- Footer Section -->
+        <div style="padding: 15px; background-color: #f2f2f2; border-top: 1px solid #ddd; text-align: center; font-size: 14px; color: #666;">
+            <p style="margin: 0;"><strong>Do not reply to this message.</strong> This email was sent from an unmonitored mailbox.</p>
+        </div>
     </div>
-    <h2>Action Required: Device Sync Overdue</h2>
-    <p>Hello $Username,</p>
-    <p>Your device, <strong>$DeviceName</strong>, has not synced with Intune since <strong>$LastSyncTime</strong>. To ensure your device remains compliant and secure, please perform the following steps:</p>
-    
-    <h3>Sync Your Device</h3>
-    
-    <!-- PLATFORM_TABS_START -->
-    <div class="platform-tabs">
-      <!-- WINDOWS_TAB_START -->
-      <div class="tab">Windows</div>
-      <!-- WINDOWS_TAB_END -->
-      
-      <!-- IOS_TAB_START -->
-      <div class="tab">iOS/iPadOS</div>
-      <!-- IOS_TAB_END -->
-      
-      <!-- ANDROID_TAB_START -->
-      <!-- <div class="tab">Android</div> -->
-      <!-- ANDROID_TAB_END -->
-      
-      <!-- MACOS_TAB_START -->
-      <!-- <div class="tab">macOS</div> -->
-      <!-- MACOS_TAB_END -->
-    </div>
-    <!-- PLATFORM_TABS_END -->
-    
-    <!-- IOS_INSTRUCTIONS_START -->
-    <h4>For iOS/iPadOS Devices:</h4>
-    <ol class="steps">
-      <li>Ensure your device is powered on and connected to the internet (Wi-Fi or cellular).</li>
-      <li>Open the <strong>Company Portal</strong> app on your device.</li>
-      <li>Tap on <strong>Devices</strong> at the bottom of the screen.</li>
-      <li>Select your device from the list.</li>
-      <li>Tap on <strong>Check Status</strong> or <strong>Sync</strong> to initiate a sync.</li>
-    </ol>
-    <!-- IOS_INSTRUCTIONS_END -->
-
-    <!-- ANDROID_INSTRUCTIONS_START -->
-    <!-- <h4>For Android Devices:</h4>
-    <ol class="steps">
-      <li>Ensure your device is powered on and connected to the internet.</li>
-      <li>Open the <strong>Company Portal</strong> app on your device.</li>
-      <li>Tap the menu icon (three lines) in the top left corner.</li>
-      <li>Tap <strong>Devices</strong>, then select your device.</li>
-      <li>Tap <strong>Check Status</strong> or <strong>Sync Device</strong>.</li>
-    </ol> -->
-    <!-- ANDROID_INSTRUCTIONS_END -->
-
-    <!-- WINDOWS_INSTRUCTIONS_START -->
-    <h4>For Windows Devices:</h4>
-    <ol class="steps">
-      <li>Ensure your device is powered on and connected to the internet.</li>
-      <li>Click on the Start menu and search for "Company Portal".</li>
-      <li>Open the <strong>Company Portal</strong> app.</li>
-      <li>Select your device from the list of devices.</li>
-      <li>Click <strong>Sync this device</strong> or click the menu icon in the taskbar and select <strong>Sync this device</strong>.</li>
-    </ol>
-    <!-- WINDOWS_INSTRUCTIONS_END -->
-
-    <!-- MACOS_INSTRUCTIONS_START -->
-    <!-- <h4>For macOS Devices:</h4>
-    <ol class="steps">
-      <li>Ensure your device is powered on and connected to the internet.</li>
-      <li>Open the <strong>Company Portal</strong> app on your Mac.</li>
-      <li>Select your device from the list of devices.</li>
-      <li>Click the <strong>Sync</strong> button to initiate a sync.</li>
-    </ol> -->
-    <!-- MACOS_INSTRUCTIONS_END -->
-
-    <!-- UPDATES_SECTION_START -->
-    <h3>Check for Updates</h3>
-    <p>While syncing, also check for any pending updates:</p>
-
-    <!-- IOS_UPDATES_START -->
-    <h4>For iOS/iPadOS Devices:</h4>
-    <ol class="steps">
-      <li>Go to <strong>Settings</strong> > <strong>General</strong> > <strong>Software Update</strong>.</li>
-      <li>If updates are available, tap <strong>Download and Install</strong>.</li>
-    </ol>
-    <!-- IOS_UPDATES_END -->
-
-    <!-- ANDROID_UPDATES_START -->
-    <!-- <h4>For Android Devices:</h4>
-    <ol class="steps">
-      <li>Open <strong>Settings</strong> > <strong>System</strong> > <strong>System update</strong> or <strong>Software update</strong> (may vary by device).</li>
-      <li>Tap <strong>Check for updates</strong> and install if available.</li>
-    </ol> -->
-    <!-- ANDROID_UPDATES_END -->
-
-    <!-- WINDOWS_UPDATES_START -->
-    <h4>For Windows Devices:</h4>
-    <ol class="steps">
-      <li>Open <strong>Settings</strong> > <strong>Windows Update</strong>.</li>
-      <li>Click <strong>Check for updates</strong> and install any available updates.</li>
-      <li>Restart your device if prompted.</li>
-    </ol>
-    <!-- WINDOWS_UPDATES_END -->
-
-    <!-- MACOS_UPDATES_START -->
-    <!-- <h4>For macOS Devices:</h4>
-    <ol class="steps">
-      <li>Click the Apple menu > <strong>System Settings</strong> or <strong>System Preferences</strong>.</li>
-      <li>Select <strong>Software Update</strong>.</li>
-      <li>Click <strong>Update Now</strong> if updates are available.</li>
-    </ol> -->
-    <!-- MACOS_UPDATES_END -->
-    <!-- UPDATES_SECTION_END -->
-
-    <div class="note">
-      <p><strong>Why this matters:</strong> Regular syncing ensures your device receives the latest security policies and configurations. Keeping your device updated helps protect your data and our organization's network.</p>
-    </div>
-
-    <p>If you encounter any issues or need assistance, please contact the IT Help Desk at <a href="mailto:$SupportEmail">$SupportEmail</a> or call $SupportPhone.</p>
-
-    <div class="footer">
-      <p><strong>Do not reply to this message.</strong> This email was sent from an unmonitored mailbox.</p>
-    </div>
-  </div>
 </body>
 </html>
 "@
@@ -602,83 +514,104 @@ function Send-ITNotificationEmail {
 <!DOCTYPE html>
 <html>
 <head>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      background-color: #f9f9f9;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 800px;
-      margin: 20px auto;
-      padding: 20px;
-      background-color: #ffffff;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-    }
-    .logo {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    h2 {
-      color: #333;
-      text-align: center;
-    }
-    p {
-      color: #555;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 20px 0;
-    }
-    th {
-      background-color: #f2f2f2;
-      padding: 10px 8px;
-      text-align: left;
-      border: 1px solid #ddd;
-    }
-    .footer {
-      margin-top: 30px;
-      font-size: 0.9em;
-      color: #666;
-      text-align: center;
-      border-top: 1px solid #eee;
-      padding-top: 15px;
-    }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intune Devices Without Primary Users</title>
 </head>
-<body>
-  <div class="container">
-    <div class="logo">
-      <img src="$LogoUrl" alt="Company Logo" width="150" />
-    </div>
-    <h2>Intune Devices Without Primary Users</h2>
-    <p>The following devices have not synced in the past $DaysSinceLastSync days and do not have a primary user assigned. These devices require IT attention:</p>
-    
-    <table>
-      <thead>
-        <tr>
-          <th>Device Name</th>
-          <th>OS</th>
-          <th>Model</th>
-          <th>Serial Number</th>
-          <th>Last Sync Time</th>
-        </tr>
-      </thead>
-      <tbody>
-        $deviceTableRows
-      </tbody>
-    </table>
-    
-    <p>Please review these devices and take appropriate action to ensure they remain compliant and secure.</p>
-
-    <div class="footer">
-      <p>This is an automated message from the Intune Device Management System.</p>
-    </div>
-  </div>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; background-color: #f9f9f9; margin: 0; padding: 0; color: #333;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; background-color: #ffffff;">
+    <tr>
+      <td style="padding: 20px;">
+        <!-- Logo -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td align="center" style="padding-bottom: 20px;">
+              <img src="https://via.placeholder.com/150x50?text=Your+Logo" alt="Company Logo" width="150" style="display: block;" />
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Header -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td align="center" style="padding-bottom: 20px; border-bottom: 1px solid #eee;">
+              <h2 style="color: #333; margin: 0;">Intune Devices Without Primary Users</h2>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Summary Box -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 20px 0; background-color: #f8f8f8; border-left: 4px solid #4285f4;">
+          <tr>
+            <td style="padding: 15px;">
+              <p style="margin: 0;"><span style="font-weight: bold; color: #e53935;">$DeviceCount</span> devices have not synced in the past $DaysSinceLastSync days and do not have a primary user assigned. These devices require IT attention.</p>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Device Table -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 20px 0;">
+          <tr>
+            <td>
+              <table cellpadding="0" cellspacing="0" border="1" width="100%" style="border-collapse: collapse; border-color: #ddd;">
+                <tr>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Device Name</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">OS</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Model</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Serial Number</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Last Sync Time</th>
+                </tr>
+                $DeviceTableRows
+              </table>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Action Items -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td style="padding-bottom: 15px; color: #555;">
+              <p>These devices may need:</p>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Primary user assignment</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Manual sync initiation</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Investigation for connectivity issues</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Possible retirement if no longer in use</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Additional Info -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td style="padding-bottom: 15px; color: #555;">
+              <p>Please review these devices and take appropriate action to ensure they remain compliant and secure. Devices without assigned users cannot receive the automated sync reminder emails sent to end users.</p>
+              <p>For a complete view of all devices, please check the Intune portal.</p>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Footer -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">
+          <tr>
+            <td align="center" style="font-size: 0.9em; color: #666;">
+              <p style="margin-bottom: 5px;">This is an automated message from the Intune Device Management System.</p>
+              <p style="margin: 0;">Report generated on: $CurrentDate</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 "@

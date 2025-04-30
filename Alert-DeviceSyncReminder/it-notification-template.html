@@ -1,128 +1,103 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      background-color: #f9f9f9;
-      margin: 0;
-      padding: 0;
-      color: #333;
-    }
-    .container {
-      max-width: 800px;
-      margin: 20px auto;
-      padding: 20px;
-      background-color: #ffffff;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .logo {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    h2 {
-      color: #333;
-      text-align: center;
-      margin-bottom: 20px;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 10px;
-    }
-    p {
-      color: #555;
-      margin-bottom: 15px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 20px 0;
-    }
-    th {
-      background-color: #f2f2f2;
-      padding: 10px 8px;
-      text-align: left;
-      border: 1px solid #ddd;
-      font-weight: bold;
-    }
-    td {
-      padding: 8px;
-      border: 1px solid #ddd;
-      vertical-align: top;
-    }
-    tr:nth-child(even) {
-      background-color: #f9f9f9;
-    }
-    tr:hover {
-      background-color: #f1f1f1;
-    }
-    .footer {
-      margin-top: 30px;
-      font-size: 0.9em;
-      color: #666;
-      text-align: center;
-      border-top: 1px solid #eee;
-      padding-top: 15px;
-    }
-    .summary {
-      background-color: #f8f8f8;
-      border-left: 4px solid #4285f4;
-      padding: 15px;
-      margin: 20px 0;
-    }
-    .warning {
-      color: #e53935;
-      font-weight: bold;
-    }
-    .device-count {
-      font-weight: bold;
-      color: #e53935;
-    }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intune Devices Without Primary Users</title>
 </head>
-<body>
-  <div class="container">
-    <div class="logo">
-      <img src="$LogoUrl" alt="Company Logo" width="150" />
-    </div>
-    <h2>Intune Devices Without Primary Users</h2>
-    
-    <div class="summary">
-      <p><span class="device-count">$DeviceCount</span> devices have not synced in the past $DaysSinceLastSync days and do not have a primary user assigned. These devices require IT attention.</p>
-    </div>
-    
-    <table>
-      <thead>
-        <tr>
-          <th>Device Name</th>
-          <th>OS</th>
-          <th>Model</th>
-          <th>Serial Number</th>
-          <th>Last Sync Time</th>
-        </tr>
-      </thead>
-      <tbody>
-        $DeviceTableRows
-      </tbody>
-    </table>
-    
-    <p>These devices may need:</p>
-    <ul>
-      <li>Primary user assignment</li>
-      <li>Manual sync initiation</li>
-      <li>Investigation for connectivity issues</li>
-      <li>Possible retirement if no longer in use</li>
-    </ul>
-    
-    <p>Please review these devices and take appropriate action to ensure they remain compliant and secure. Devices without assigned users cannot receive the automated sync reminder emails sent to end users.</p>
-
-    <p>For a complete view of all devices, please check the Intune portal.</p>
-
-    <div class="footer">
-      <p>This is an automated message from the Intune Device Management System.</p>
-      <p>Report generated on: $CurrentDate</p>
-    </div>
-  </div>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; background-color: #f9f9f9; margin: 0; padding: 0; color: #333;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; background-color: #ffffff;">
+    <tr>
+      <td style="padding: 20px;">
+        <!-- Logo -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td align="center" style="padding-bottom: 20px;">
+              <img src="https://via.placeholder.com/150x50?text=Your+Logo" alt="Company Logo" width="150" style="display: block;" />
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Header -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td align="center" style="padding-bottom: 20px; border-bottom: 1px solid #eee;">
+              <h2 style="color: #333; margin: 0;">Intune Devices Without Primary Users</h2>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Summary Box -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 20px 0; background-color: #f8f8f8; border-left: 4px solid #4285f4;">
+          <tr>
+            <td style="padding: 15px;">
+              <p style="margin: 0;"><span style="font-weight: bold; color: #e53935;">$DeviceCount</span> devices have not synced in the past $DaysSinceLastSync days and do not have a primary user assigned. These devices require IT attention.</p>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Device Table -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 20px 0;">
+          <tr>
+            <td>
+              <table cellpadding="0" cellspacing="0" border="1" width="100%" style="border-collapse: collapse; border-color: #ddd;">
+                <tr>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Device Name</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">OS</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Model</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Serial Number</th>
+                  <th style="background-color: #f2f2f2; padding: 10px 8px; text-align: left; font-weight: bold;">Last Sync Time</th>
+                </tr>
+                $DeviceTableRows
+              </table>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Action Items -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td style="padding-bottom: 15px; color: #555;">
+              <p>These devices may need:</p>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Primary user assignment</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Manual sync initiation</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Investigation for connectivity issues</td>
+                </tr>
+                <tr>
+                  <td style="padding-left: 20px; padding-bottom: 5px; color: #555;">• Possible retirement if no longer in use</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Additional Info -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td style="padding-bottom: 15px; color: #555;">
+              <p>Please review these devices and take appropriate action to ensure they remain compliant and secure. Devices without assigned users cannot receive the automated sync reminder emails sent to end users.</p>
+              <p>For a complete view of all devices, please check the Intune portal.</p>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Footer -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">
+          <tr>
+            <td align="center" style="font-size: 0.9em; color: #666;">
+              <p style="margin-bottom: 5px;">This is an automated message from the Intune Device Management System.</p>
+              <p style="margin: 0;">Report generated on: $CurrentDate</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
