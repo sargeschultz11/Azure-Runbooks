@@ -1,6 +1,8 @@
 # Azure-Runbooks 
 
-<img src="https://raw.githubusercontent.com/sargeschultz11/Azure-Runbooks/dev/sync-reminder/assets/repo_logo.png" alt="Logo"/>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/sargeschultz11/Azure-Runbooks/dev/sync-reminder/assets/repo_logo.png" alt="Logo" width="200"/>
+</div>
 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
