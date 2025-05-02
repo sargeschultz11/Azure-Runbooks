@@ -101,7 +101,6 @@ configuration-*.xml
 .env.*
 *secrets*
 *credentials*
-*token*
 *password*
 *apikey*
 *secret*
