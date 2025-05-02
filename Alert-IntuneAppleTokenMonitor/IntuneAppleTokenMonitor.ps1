@@ -5,36 +5,62 @@
 .DESCRIPTION
     This Azure Runbook script connects to Microsoft Graph API using a System-Assigned Managed Identity,
     retrieves expiration information for various Intune tokens (Apple Push Notification service certificates,
-    VPP tokens, DEP tokens), and sends Teams notifications for tokens approaching expiration.
+    VPP tokens, DEP tokens), and sends Teams and/or email notifications for tokens approaching expiration.
     
 .PARAMETER WarningThresholdDays
     The number of days before expiration to start sending warning notifications.
     Default is 30 days.
     
 .PARAMETER TeamsWebhookUrl
-    Microsoft Teams webhook URL for sending notifications about token status.
+    Optional. Microsoft Teams webhook URL for sending notifications about token status.
+    If not specified, Teams notifications will not be sent.
+    
+.PARAMETER SendEmailNotification
+    Switch parameter. When specified, email notifications will be sent.
+    Uses true/false to indicate whether to send email notifications.
+    If specified, EmailSender and EmailRecipients must also be provided.
+    
+.PARAMETER EmailSender
+    The email address that will be used as the sender for email notifications.
+    Required if SendEmailNotification is specified.
+    
+.PARAMETER EmailRecipients
+    A comma-separated list of email addresses that will receive the notifications.
+    Required if SendEmailNotification is specified.
     
 .PARAMETER WhatIf
     Optional. If specified, shows what would be done but doesn't actually send notifications.
+    Use true to enable WhatIf mode.
     
 .NOTES
     Author: Ryan Schultz
-    Version: 1.0
+    Version: 1.2
     Created: 2025-04-17
+    Updated: 2025-04-29
     
     Required Graph API Permissions for Managed Identity:
     - DeviceManagementServiceConfig.Read.All
     - DeviceManagementConfiguration.Read.All
     - DeviceManagementApps.Read.All
     - Organization.Read.All
+    - Mail.Send (required for email notifications)
 #>
 
 param(
     [Parameter(Mandatory = $false)]
     [int]$WarningThresholdDays = 30,
     
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $false)]
     [string]$TeamsWebhookUrl,
+    
+    [Parameter(Mandatory = $false)]
+    [switch]$SendEmailNotification,
+    
+    [Parameter(Mandatory = $false)]
+    [string]$EmailSender,
+    
+    [Parameter(Mandatory = $false)]
+    [string]$EmailRecipients,
     
     [Parameter(Mandatory = $false)]
     [switch]$WhatIf
@@ -46,6 +72,29 @@ $startTime = Get-Date
 $notificationThreshold = (Get-Date).AddDays($WarningThresholdDays)
 $tokenCollection = @()
 $expiringTokens = @()
+
+# Validate parameters for email notifications
+if ($SendEmailNotification) {
+    if ([string]::IsNullOrEmpty($EmailSender)) {
+        Write-Output "ERROR: EmailSender parameter is required when SendEmailNotification is specified"
+        throw "EmailSender parameter is required when SendEmailNotification is specified"
+    }
+    
+    if ([string]::IsNullOrEmpty($EmailRecipients)) {
+        Write-Output "ERROR: EmailRecipients parameter is required when SendEmailNotification is specified"
+        throw "EmailRecipients parameter is required when SendEmailNotification is specified"
+    }
+    
+    Write-Output "Email notifications will be sent from $EmailSender to $EmailRecipients"
+}
+
+if (-not [string]::IsNullOrEmpty($TeamsWebhookUrl)) {
+    Write-Output "Teams notifications will be sent to the specified webhook URL"
+}
+
+if (-not $SendEmailNotification -and [string]::IsNullOrEmpty($TeamsWebhookUrl)) {
+    Write-Output "WARNING: No notification method specified. No notifications will be sent."
+}
 
 # Connect to Microsoft Graph using Managed Identity
 try {
@@ -80,7 +129,8 @@ try {
 }
 catch {
     Write-Output "Failed to retrieve organization information: $_"
-    $orgDomain = "your organization"
+    # Edit this line to set a default organization domain
+    $orgDomain = "yourorganization.com"
 }
 
 # Check Apple Push Notification Certificate
@@ -220,8 +270,141 @@ catch {
     Write-Output "Error checking Apple DEP tokens: $_"
 }
 
-# Send Teams notification if there are expiring tokens
-if ($expiringTokens.Count -gt 0) {
+# Send Email notification
+if ($expiringTokens.Count -gt 0 -and $SendEmailNotification) {
+    try {
+        Write-Output "Sending Email notification for $($expiringTokens.Count) expiring tokens..."
+        
+        $tokenTableRows = ""
+        foreach ($token in $expiringTokens) {
+            $statusColor = switch ($token.Status) {
+                "OK" { "#4CAF50" }
+                "Warning" { "#FFC107" }
+                "Critical" { "#F44336" }
+                "Expired" { "#F44336" }
+                default { "#000000" }
+            }
+            
+            $tokenTableRows += @"
+<tr>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.TokenType)</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.Name)</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.ExpirationDate.ToString("yyyy-MM-dd"))</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-family: Arial, sans-serif;">$($token.DaysUntilExpiration)</td>
+    <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: $statusColor; font-family: Arial, sans-serif;">$($token.Status)</td>
+</tr>
+"@
+}
+        
+        $emailBody = @"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f9f9f9;">
+    <div style="max-width: 800px; margin: 0 auto; border: 1px solid #ddd;">
+        <div style="background-color: #0078D4; color: white; padding: 20px; text-align: center;">
+            <h2 style="margin: 0; padding: 0; font-size: 24px;">Intune Apple Token Expiration Alert</h2>
+        </div>
+        <div style="padding: 20px;">
+            <p style="font-size: 16px; line-height: 1.5; color: #333;">The following Apple tokens or certificates in your Intune environment are approaching expiration or have expired:</p>
+            
+            <table style="border-collapse: collapse; width: 100%; margin-bottom: 20px;">
+                <tr>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Token Type</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Name</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Expiration Date</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Days Remaining</th>
+                    <th style="background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; font-weight: bold;">Status</th>
+                </tr>
+                $tokenTableRows
+            </table>
+            
+            <p style="font-size: 16px; line-height: 1.5; color: #333;"><strong>Action Required:</strong> Please take immediate action to renew these tokens before they expire to avoid service disruptions.</p>
+            
+            <h3 style="color: #333; margin-top: 25px; font-size: 18px;">Renewal Process:</h3>
+            <ul style="margin-left: 0; padding-left: 20px;">
+                <li style="margin-bottom: 10px;"><strong>For APNs Certificate:</strong> Generate a new CSR in the Intune admin center, use it to renew the certificate in the Apple Push Certificates Portal, and upload the renewed certificate back to Intune.</li>
+                <li style="margin-bottom: 10px;"><strong>For VPP Tokens:</strong> Download a new token from Apple Business Manager and upload it to Intune.</li>
+                <li style="margin-bottom: 10px;"><strong>For DEP Tokens:</strong> Generate a new server token in Apple Business Manager and upload it to Intune.</li>
+            </ul>
+            
+            <p style="font-size: 16px; line-height: 1.5; color: #333;">Failure to renew these tokens before expiration may result in disruption to device management capabilities.</p>
+        </div>
+        <div style="background-color: #f2f2f2; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+            <p style="margin: 5px 0;">This is an automated notification from the Intune Monitoring System for $orgDomain</p>
+            <p style="margin: 5px 0;">Report generated: $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))</p>
+        </div>
+    </div>
+</body>
+</html>
+"@
+        
+        if ($WhatIf) {
+            Write-Output "WHATIF: Would send Email notification to $EmailRecipients with subject 'Intune Apple Token Expiration Alert'"
+            Write-Output "Email would contain information about $($expiringTokens.Count) expiring tokens"
+        }
+        else {
+            $recipientList = @()
+            foreach ($recipient in $EmailRecipients.Split(',')) {
+                $recipientList += @{
+                    emailAddress = @{
+                        address = $recipient.Trim()
+                    }
+                }
+            }
+            
+            $mailMessage = @{
+                message = @{
+                    subject = "Intune Apple Token Expiration Alert"
+                    body = @{
+                        contentType = "HTML"
+                        content = $emailBody
+                    }
+                    toRecipients = $recipientList
+                }
+                saveToSentItems = $true
+            }
+            
+            $emailUri = "https://graph.microsoft.com/v1.0/users/$EmailSender/sendMail"
+            Invoke-RestMethod -Uri $emailUri -Headers $headers -Method Post -Body ($mailMessage | ConvertTo-Json -Depth 10)
+            
+            Write-Output "Email notification sent successfully to $EmailRecipients"
+        }
+    }
+    catch {
+        Write-Output "Error sending Email notification: $_"
+        
+        if ($null -ne $_.Exception) {
+            Write-Output "Exception type: $($_.Exception.GetType().FullName)"
+            
+            if ($null -ne $_.Exception.Response) {
+                Write-Output "Status code: $($_.Exception.Response.StatusCode)"
+                
+                try {
+                    $responseStream = $_.Exception.Response.GetResponseStream()
+                    $reader = New-Object System.IO.StreamReader($responseStream)
+                    $responseBody = $reader.ReadToEnd()
+                    Write-Output "Response body: $responseBody"
+                }
+                catch {
+                    Write-Output "Could not read response body: $_"
+                }
+            }
+            
+            if ($_.Exception.InnerException) {
+                Write-Output "Inner exception: $($_.Exception.InnerException.Message)"
+            }
+        }
+    }
+}
+elseif ($SendEmailNotification -and $expiringTokens.Count -eq 0) {
+    Write-Output "No expiring tokens found. No email notifications sent."
+}
+
+# Send Teams notification
+if ($expiringTokens.Count -gt 0 -and -not [string]::IsNullOrEmpty($TeamsWebhookUrl)) {
     try {
         Write-Output "Sending Teams notification for $($expiringTokens.Count) expiring tokens..."
         if ($WhatIf) {
@@ -251,23 +434,23 @@ if ($expiringTokens.Count -gt 0) {
                                 type = "FactSet"
                                 facts = @(
                                     @{
-                                        title = "Token Type"
+                                        title = "Token Type:"
                                         value = $token.TokenType
                                     },
                                     @{
-                                        title = "Token Name"
+                                        title = "Token Name:"
                                         value = $token.Name
                                     },
                                     @{
-                                        title = "Expiration Date"
+                                        title = "Expiration Date:"
                                         value = $token.ExpirationDate.ToString("yyyy-MM-dd")
                                     },
                                     @{
-                                        title = "Days Remaining"
+                                        title = "Days Remaining:"
                                         value = "$($token.DaysUntilExpiration)"
                                     },
                                     @{
-                                        title = "Status"
+                                        title = "Status:"
                                         value = $token.Status
                                     }
                                 )
@@ -288,8 +471,8 @@ if ($expiringTokens.Count -gt 0) {
                 attachments = $attachments
             }
             $jsonBody = ConvertTo-Json -InputObject $message -Depth 10
-            Write-Output "Sending JSON payload:"
-            Write-Output $jsonBody
+            Write-Output "Sending JSON payload to Teams webhook:"
+            
             $params = @{
                 Uri = $TeamsWebhookUrl
                 Method = "POST"
@@ -329,8 +512,8 @@ if ($expiringTokens.Count -gt 0) {
         }
     }
 }
-else {
-    Write-Output "No expiring tokens found. No notifications sent."
+elseif (-not [string]::IsNullOrEmpty($TeamsWebhookUrl) -and $expiringTokens.Count -eq 0) {
+    Write-Output "No expiring tokens found. No Teams notifications sent."
 }
 
 # Generate summary
@@ -348,6 +531,11 @@ Write-Output "Warning tokens: $($warningTokens.Count)"
 Write-Output "Critical/expired tokens: $($criticalTokens.Count)"
 Write-Output "Execution time: $($duration.TotalMinutes.ToString("0.00")) minutes"
 
+$notificationMethod = @()
+if (-not [string]::IsNullOrEmpty($TeamsWebhookUrl)) { $notificationMethod += "Teams" }
+if ($SendEmailNotification) { $notificationMethod += "Email" }
+if ($notificationMethod.Count -eq 0) { $notificationMethod += "None" }
+
 $result = [PSCustomObject]@{
     TotalTokensChecked = $tokenCollection.Count
     HealthyTokens = $healthyTokens.Count
@@ -357,6 +545,9 @@ $result = [PSCustomObject]@{
     ExecutionTimeMinutes = $duration.TotalMinutes
     TokenCollection = $tokenCollection
     ExpiringTokenDetails = $expiringTokens
+    NotificationMethod = $notificationMethod -join ", "
+    EmailNotificationSent = ($SendEmailNotification -and $expiringTokens.Count -gt 0 -and -not $WhatIf)
+    TeamsNotificationSent = (-not [string]::IsNullOrEmpty($TeamsWebhookUrl) -and $expiringTokens.Count -gt 0 -and -not $WhatIf)
 }
 
 return $result
