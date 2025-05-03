@@ -31,7 +31,7 @@ Azure-Runbooks/
 ├── Report-UserManagers/            # Generate reports of users and their managers
 ├── Report-MissingSecurityUpdates/  # Report on devices missing security updates
 ├── Sync-IntuneDevices/             # Force sync all managed Intune devices
-└── [future runbooks]/              # More solutions will be added
+└── Report-DeviceSyncOverdue/       # Report on devices overdue for sync
 ```
 
 Each runbook folder contains:
@@ -78,6 +78,7 @@ Each runbook includes detailed documentation for implementation and usage. In ge
 - **Device Compliance Report**: Create detailed reports on device compliance status.
 - **Devices with Specific App Report**: Identify all devices with a specific application installed.
 - **User Managers Report**: Generate a report of all licensed internal users along with their manager information.
+- **Device Sync Overdue Report**: Generate comprehensive reports of devices overdue for sync and store them in Azure Blob Storage.
 
 ## Branch Management
 
