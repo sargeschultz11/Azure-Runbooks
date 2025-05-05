@@ -31,7 +31,7 @@
     
 .NOTES
     File Name: Get-OneDriveSharedItemsReport.ps1
-    Author: Your Name
+    Author: Ryan Schultz
     Version: 1.0
     Created: 2025-05-05
     
@@ -95,37 +95,30 @@ function Write-Log {
 
 function Get-MsGraphToken {
     try {
-        Write-Log "Authenticating with Managed Identity..."
+        Write-Host "Authenticating with Managed Identity..."
         Connect-AzAccount -Identity | Out-Null
 
-        try {
-            $tokenObj = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com" -ErrorAction Stop
-            
-            Write-Log "Using current Az.Accounts version with string token"
+        $tokenObj = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com"
+
+        if ($tokenObj.Token -is [System.Security.SecureString]) {
+            Write-Host "Token is SecureString, converting to plain text..."
+            $token = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [Runtime.InteropServices.Marshal]::SecureStringToBSTR($tokenObj.Token)
+            )
+        } else {
+            Write-Host "Token is plain string, no conversion needed."
             $token = $tokenObj.Token
-        }
-        catch {
-            if ($_.Exception.Message -like "*-AsSecureString*") {
-                Write-Log "Using newer Az.Accounts version with secure string token"
-                $tokenObj = Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com" -AsSecureString
-                $token = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($tokenObj)
-                )
-            }
-            else {
-                throw $_
-            }
         }
 
         if (-not [string]::IsNullOrEmpty($token)) {
-            Write-Log "Token acquired successfully."
+            Write-Host "Token acquired successfully."
             return $token
         } else {
             throw "Token was empty."
         }
     }
     catch {
-        Write-Log "Failed to acquire Microsoft Graph token using Managed Identity: $_" -Type "ERROR"
+        Write-Error "Failed to acquire Microsoft Graph token using Managed Identity: $_"
         throw
     }
 }
