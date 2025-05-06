@@ -1,3 +1,4 @@
+# Requires -Modules "Az.Accounts"
 <#
 .SYNOPSIS
     Generates a report of all users and their managers and uploads to SharePoint using Managed Identity.
@@ -55,9 +56,9 @@ $accessToken = Get-MsGraphToken
 
 $users = @()
 $filter = "userType eq 'Member' and assignedLicenses/$count ne 0"
-$select = "id,displayName,userPrincipalName,mail"
+$select = "id,displayName,givenName,surname,jobTitle,department,userPrincipalName,mail"
 $expand = "manager"
-$nextLink = "https://graph.microsoft.com/v1.0/users?`$select=id,displayName,userPrincipalName,mail,userType,assignedLicenses&`$expand=manager"
+$nextLink = "https://graph.microsoft.com/v1.0/users?`$select=id,displayName,givenName,surname,jobTitle,department,userPrincipalName,mail,userType,assignedLicenses&`$expand=manager"
 $headers = @{ Authorization = "Bearer $accessToken" }
 
 do {
@@ -69,7 +70,11 @@ do {
         }
 
         $users += [PSCustomObject]@{
+            FirstName         = $user.givenName
+            LastName          = $user.surname
             DisplayName       = $user.displayName
+            Title             = $user.jobTitle
+            Department        = $user.department
             UserPrincipalName = $user.userPrincipalName
             Email             = $user.mail
             ManagerName       = $user.manager.displayName

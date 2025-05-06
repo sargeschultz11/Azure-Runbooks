@@ -43,7 +43,11 @@ Use the included `Add-GraphPermissions.ps1` script to grant required permissions
 
 ### Excel Sheet: Users and Managers
 The exported Excel file includes the following columns:
+- First Name
+- Last Name
 - Display Name
+- Title
+- Department
 - User Principal Name
 - Email
 - Manager Name
@@ -67,19 +71,19 @@ Only users with assigned licenses and a `userType` of `Member` (i.e., non-guests
   - `DriveId`: ID of the SharePoint document library
 
 ### 4. Import and Configure the Runbook
-1. Go to **Runbooks > Import a Runbook**
+1. Go to **Runbooks > Import a Runback**
 2. Upload `Export-UserManagers.ps1`
 3. Publish it
 
-### 5. Schedule the Runbook
-1. Go to the runbook > Schedules > Add schedule
+### 5. Schedule the Runback
+1. Go to the runback > Schedules > Add schedule
 2. Link it to your automation schedule and provide the required parameters
 
 ## Execution Flow
 1. **Authenticate** using Managed Identity with Microsoft Graph
 2. **Fetch all users** from Graph and filter only internal, licensed users
-3. **Get each user’s manager** using `$expand=manager`
-4. **Create an Excel file** containing all relevant data
+3. **Get each user's manager** using `$expand=manager`
+4. **Create an Excel file** containing all relevant data (including first name, last name, title, and department)
 5. **Upload the file** to your SharePoint library
 6. **Clean up temp files** and output a success message
 
