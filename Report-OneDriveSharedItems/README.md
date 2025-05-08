@@ -78,9 +78,20 @@ You'll also need to assign storage permissions to your Managed Identity:
 1. **Authentication**: The script authenticates to Microsoft Graph API and Azure Storage using the Automation Account's Managed Identity.
 2. **User Identification**: Looks up the user ID from the provided UPN.
 3. **OneDrive Access**: Gets the user's OneDrive drive ID.
-4. **Content Scanning**: Recursively scans the OneDrive for shared items, examining sharing permissions.
+4. **Content Scanning**: Using a queue-based approach, scans the OneDrive for shared items, examining sharing permissions.
 5. **Report Generation**: Creates a CSV report with details of all shared items.
 6. **Storage Upload**: Uploads the report to Azure Blob Storage and returns the URL.
+
+## Performance and Safety Features
+The script includes several mechanisms to ensure reliable operation with large OneDrive collections:
+
+- **Queue-based folder traversal**: Uses a non-recursive approach to prevent stack overflow errors with deeply nested folder structures
+- **Safety timeout**: Automatically stops processing after 10 minutes to prevent runbook timeouts 
+- **Folder limit**: Caps processing at 1,000 folders to avoid excessive execution time
+- **Item limit**: Caps item processing at 10,000 items to prevent performance issues
+- **Robust error handling**: Isolated try/catch blocks for each item's permission check to ensure errors with individual items don't halt the entire process
+
+These safety measures make the script suitable for enterprise environments with large and complex OneDrive structures.
 
 ## Output
 The script produces a PowerShell custom object with the following properties:
@@ -150,6 +161,7 @@ The script includes comprehensive error handling:
 - API throttling is handled with exponential backoff
 - Progress logging for troubleshooting
 - Temporary file cleanup even when errors occur
+- Isolated error handling for individual items to prevent cascading failures
 
 ## Notes and Best Practices
 - When using with multiple users, consider the Graph API throttling limits
@@ -157,3 +169,5 @@ The script includes comprehensive error handling:
 - Consider reviewing anonymous or organization-wide shares regularly for security risks
 - Set appropriate retention policies for the report storage container
 - Use the WhatIf parameter first to validate functionality without creating reports
+- For very large OneDrives, the script will cap processing at 1,000 folders or 10,000 items, whichever comes first
+- To work with larger environments, consider customizing the `$maxFolders`, `$maxItems`, and `$scriptTimeoutMinutes` variables
