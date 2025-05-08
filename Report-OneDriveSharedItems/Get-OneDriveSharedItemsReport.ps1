@@ -175,7 +175,7 @@ function Invoke-MsGraphRequestWithRetry {
                 
                 Start-Sleep -Seconds $retryAfter
                 
-                $retryCount++
+                $retryCount++ 
                 $backoffSeconds = $backoffSeconds * 2
             }
             else {
@@ -251,145 +251,186 @@ function Get-OneDriveSharedItems {
         [int]$InitialBackoffSeconds = 5,
         [System.Collections.ArrayList]$SharedItems = $null
     )
-    
+
     if ($null -eq $SharedItems) {
         $SharedItems = New-Object System.Collections.ArrayList
     }
-    
+
     try {
-        Write-Log "Scanning items in folder: $FolderId"
-        $itemsUri = "https://graph.microsoft.com/v1.0/users/$UserId/drives/$DriveId/items/$FolderId/children"
-        
-        $items = @()
-        $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $itemsUri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
-        $items += $response.value
-        
-        while ($null -ne $response.'@odata.nextLink') {
-            Write-Log "Retrieving next page of items..."
-            $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $response.'@odata.nextLink' -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+        $folderQueue = New-Object System.Collections.Queue
+        $folderQueue.Enqueue($FolderId)
+        $folderCount = 0
+        $itemCount = 0
+
+        Write-Log "Starting folder traversal loop..."
+
+        while ($folderQueue.Count -gt 0) {
+            if ((Get-Date) -gt $timeoutTime) {
+                Write-Log "Script timed out after $scriptTimeoutMinutes minutes. Exiting folder traversal." -Type "ERROR"
+                break
+            }
+            if ($folderCount -ge $maxFolders) {
+                Write-Log "Reached max folder count ($maxFolders). Exiting folder traversal." -Type "WARNING"
+                break
+            }
+            $currentFolderId = $folderQueue.Dequeue()
+            $folderCount++
+            Write-Log "Dequeued folder #$folderCount`: $currentFolderId (Folders left in queue: $($folderQueue.Count))"
+            $itemsUri = "https://graph.microsoft.com/v1.0/users/$UserId/drives/$DriveId/items/$currentFolderId/children"
+
+            $items = @()
+            $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $itemsUri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+            if (-not $response -or -not $response.value) {
+                Write-Log "No items found in folder $currentFolderId. Skipping to next folder."
+                continue
+            }
             $items += $response.value
-        }
-        
-        Write-Log "Found $($items.Count) items in folder: $FolderId"
-        
-        foreach ($item in $items) {
-            $itemPermissionsUri = "https://graph.microsoft.com/v1.0/users/$UserId/drives/$DriveId/items/$($item.id)/permissions"
-            $permissionsResponse = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $itemPermissionsUri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
-            $permissions = $permissionsResponse.value
-            
-            if ($permissions -and ($permissions | Where-Object { -not $_.inheritedFrom })) {
-                $isShared = $false
-                $shareType = ""
-                $sharedWith = ""
-                $shareLink = ""
-                $roles = ""
-                
-                foreach ($permission in $permissions) {
-                    if ($permission.inheritedFrom) {
-                        continue
-                    }
-                    
-                    $isShared = $true
-                    
-                    $permRoles = $permission.roles -join ", "
-                    if ($roles) {
-                        $roles += "; $permRoles"
-                    } else {
-                        $roles = $permRoles
-                    }
-                    
-                    if ($permission.link) {
-                        if ($shareType) {
-                            $shareType += "; Link"
+
+            while ($null -ne $response.'@odata.nextLink') {
+                Write-Log "Retrieving next page of items for folder $currentFolderId..."
+                $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $response.'@odata.nextLink' -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+                $items += $response.value
+            }
+
+            Write-Log "Found $($items.Count) items in folder: $currentFolderId"
+
+            foreach ($item in $items) {
+                if ($itemCount -ge $maxItems) {
+                    Write-Log "Reached max item count ($maxItems). Exiting item loop." -Type "WARNING"
+                    break
+                }
+                $itemCount++
+                Write-Log "Processing item #$itemCount`: $($item.name) (ID: $($item.id)) in folder $currentFolderId"
+                $itemPermissionsUri = "https://graph.microsoft.com/v1.0/users/$UserId/drives/$DriveId/items/$($item.id)/permissions"
+                try {
+                    Write-Log "Requesting permissions for item $($item.id)..."
+                    $permissionsResponse = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $itemPermissionsUri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+                    Write-Log "Permissions received for item $($item.id)"
+                } catch {
+                    Write-Log "Error getting permissions for item $($item.id): $_" -Type "WARNING"
+                    continue
+                }
+                if (-not $permissionsResponse -or -not $permissionsResponse.value) {
+                    Write-Log "No permissions found for item $($item.id). Skipping."
+                    continue
+                }
+                $permissions = $permissionsResponse.value
+
+                if ($permissions -and ($permissions | Where-Object { -not $_.inheritedFrom })) {
+                    $isShared = $false
+                    $shareType = ""
+                    $sharedWith = ""
+                    $shareLink = ""
+                    $roles = ""
+
+                    foreach ($permission in $permissions) {
+                        if ($permission.inheritedFrom) {
+                            continue
+                        }
+
+                        $isShared = $true
+
+                        $permRoles = $permission.roles -join ", "
+                        if ($roles) {
+                            $roles += "; $permRoles"
                         } else {
-                            $shareType = "Link"
+                            $roles = $permRoles
                         }
-                        
-                        if ($permission.link.scope -eq "anonymous") {
-                            $shareType = "Anonymous Link"
-                        } elseif ($permission.link.scope -eq "organization") {
-                            $shareType = "Organization Link"
-                        }
-                        
-                        if ($shareLink) {
-                            $shareLink += "; $($permission.link.webUrl)"
-                        } else {
-                            $shareLink = $permission.link.webUrl
-                        }
-                    }
-                    
-                    if ($permission.grantedToIdentities) {
-                        foreach ($identity in $permission.grantedToIdentities) {
-                            if ($shareType -notlike "*Direct*") {
-                                if ($shareType) {
-                                    $shareType += "; Direct"
-                                } else {
-                                    $shareType = "Direct"
-                                }
+
+                        if ($permission.link) {
+                            if ($shareType) {
+                                $shareType += "; Link"
+                            } else {
+                                $shareType = "Link"
                             }
-                            
-                            if ($identity.user) {
-                                if ($sharedWith) {
-                                    $sharedWith += "; $($identity.user.email)"
-                                } else {
-                                    $sharedWith = $identity.user.email
-                                }
-                            } elseif ($identity.group) {
-                                if ($sharedWith) {
-                                    $sharedWith += "; Group: $($identity.group.displayName)"
-                                } else {
-                                    $sharedWith = "Group: $($identity.group.displayName)"
-                                }
+
+                            if ($permission.link.scope -eq "anonymous") {
+                                $shareType = "Anonymous Link"
+                            } elseif ($permission.link.scope -eq "organization") {
+                                $shareType = "Organization Link"
+                            }
+
+                            if ($shareLink) {
+                                $shareLink += "; $($permission.link.webUrl)"
+                            } else {
+                                $shareLink = $permission.link.webUrl
                             }
                         }
-                    }
-                }
-                
-                if ($isShared) {
-                    $parentPath = ""
-                    if ($item.parentReference -and $item.parentReference.path) {
-                        $parentPath = $item.parentReference.path -replace "^.+/root:", ""
-                    }
-                    
-                    $sharingId = ""
-                    $sharingInfoUri = "https://graph.microsoft.com/v1.0/users/$UserId/drives/$DriveId/items/$($item.id)?`$select=id,name,sharepointIds"
-                    try {
-                        $sharingInfoResponse = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $sharingInfoUri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
-                        if ($sharingInfoResponse.sharepointIds -and $sharingInfoResponse.sharepointIds.siteItemUniqueId) {
-                            $sharingId = $sharingInfoResponse.sharepointIds.siteItemUniqueId
+
+                        if ($permission.grantedToIdentities) {
+                            foreach ($identity in $permission.grantedToIdentities) {
+                                if ($shareType -notlike "*Direct*") {
+                                    if ($shareType) {
+                                        $shareType += "; Direct"
+                                    } else {
+                                        $shareType = "Direct"
+                                    }
+                                }
+
+                                if ($identity.user) {
+                                    if ($sharedWith) {
+                                        $sharedWith += "; $($identity.user.email)"
+                                    } else {
+                                        $sharedWith = $identity.user.email
+                                    }
+                                } elseif ($identity.group) {
+                                    if ($sharedWith) {
+                                        $sharedWith += "; Group: $($identity.group.displayName)"
+                                    } else {
+                                        $sharedWith = "Group: $($identity.group.displayName)"
+                                    }
+                                }
+                            }
                         }
                     }
-                    catch {
-                        Write-Log "Unable to retrieve sharepointIds for $($item.name): $_" -Type "WARNING"
+
+                    if ($isShared) {
+                        $parentPath = ""
+                        if ($item.parentReference -and $item.parentReference.path) {
+                            $parentPath = $item.parentReference.path -replace "^.+/root:", ""
+                        }
+
+                        $sharingId = ""
+                        $sharingInfoUri = "https://graph.microsoft.com/v1.0/users/$UserId/drives/$DriveId/items/$($item.id)?`$select=id,name,sharepointIds"
+                        try {
+                            $sharingInfoResponse = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $sharingInfoUri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+                            if ($sharingInfoResponse.sharepointIds -and $sharingInfoResponse.sharepointIds.siteItemUniqueId) {
+                                $sharingId = $sharingInfoResponse.sharepointIds.siteItemUniqueId
+                            }
+                        }
+                        catch {
+                            Write-Log "Unable to retrieve sharepointIds for $($item.name): $_" -Type "WARNING"
+                        }
+
+                        $sharedItem = [PSCustomObject]@{
+                            Name = $item.name
+                            ItemType = $item.folder ? "Folder" : "File"
+                            WebUrl = $item.webUrl
+                            Path = $parentPath
+                            Size = $item.size
+                            CreatedDateTime = $item.createdDateTime
+                            LastModifiedDateTime = $item.lastModifiedDateTime
+                            SharedType = $shareType
+                            SharedWith = $sharedWith
+                            ShareLink = $shareLink
+                            Permissions = $roles
+                            ItemId = $item.id
+                            SharingId = $sharingId
+                        }
+
+                        [void]$SharedItems.Add($sharedItem)
+                        Write-Log "Found shared item: $($item.name), Shared as: $shareType, Shared with: $sharedWith"
                     }
-                    
-                    $sharedItem = [PSCustomObject]@{
-                        Name = $item.name
-                        ItemType = $item.folder ? "Folder" : "File"
-                        WebUrl = $item.webUrl
-                        Path = $parentPath
-                        Size = $item.size
-                        CreatedDateTime = $item.createdDateTime
-                        LastModifiedDateTime = $item.lastModifiedDateTime
-                        SharedType = $shareType
-                        SharedWith = $sharedWith
-                        ShareLink = $shareLink
-                        Permissions = $roles
-                        ItemId = $item.id
-                        SharingId = $sharingId
-                    }
-                    
-                    [void]$SharedItems.Add($sharedItem)
-                    Write-Log "Found shared item: $($item.name), Shared as: $shareType, Shared with: $sharedWith"
+                }
+
+                if ($IncludeAllFolders -and $item.folder) {
+                    Write-Log "Queueing subfolder: $($item.name) (ID: $($item.id))"
+                    $folderQueue.Enqueue($item.id)
                 }
             }
-            
-            if ($IncludeAllFolders -and $item.folder) {
-                Write-Log "Processing subfolder: $($item.name)"
-                $SharedItems = Get-OneDriveSharedItems -Token $Token -UserId $UserId -DriveId $DriveId -FolderId $item.id -IncludeAllFolders $IncludeAllFolders -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds -SharedItems $SharedItems
-            }
         }
-        
+
+        Write-Log "Folder traversal loop complete. Processed $folderCount folders and $itemCount items."
         return $SharedItems
     }
     catch {
@@ -480,11 +521,19 @@ function Upload-ToAzureBlob {
 
 # Main script logic
 try {
+    Write-Output "=== SCRIPT STARTED ==="
+    Write-Log "=== SCRIPT STARTED ==="
     if ($WhatIf) {
+        Write-Output "=== WHATIF MODE ENABLED - NO ACTUAL REPORTS WILL BE CREATED OR UPLOADED ==="
         Write-Log "=== WHATIF MODE ENABLED - NO ACTUAL REPORTS WILL BE CREATED OR UPLOADED ===" -Type "WHATIF"
     }
     
+    Write-Output "=== OneDrive Shared Items Report Process Started ==="
     Write-Log "=== OneDrive Shared Items Report Process Started ==="
+    Write-Output "User to scan: $UserPrincipalName"
+    Write-Output "Storage Account: $StorageAccountName"
+    Write-Output "Container Name: $StorageContainerName"
+    Write-Output "Include All Folders: $IncludeAllFolders"
     Write-Log "User to scan: $UserPrincipalName"
     Write-Log "Storage Account: $StorageAccountName"
     Write-Log "Container Name: $StorageContainerName"
@@ -492,28 +541,70 @@ try {
     
     $startTime = Get-Date
     $reportTimestamp = $startTime
+
+    Write-Output "Getting Microsoft Graph token..."
+    Write-Log "Getting Microsoft Graph token..."
     $token = Get-MsGraphToken
+    if (-not $token) {
+        Write-Output "Failed to get Microsoft Graph token. Exiting."
+        Write-Log "Failed to get Microsoft Graph token. Exiting." -Type "ERROR"
+        return
+    }
+    Write-Output "Token acquired."
+
+    Write-Output "Getting user ID..."
+    Write-Log "Getting user ID..."
     $userId = Get-UserIdFromUpn -Token $token -UserPrincipalName $UserPrincipalName -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+    if (-not $userId) {
+        Write-Output "Failed to get user ID. Exiting."
+        Write-Log "Failed to get user ID. Exiting." -Type "ERROR"
+        return
+    }
+    Write-Output "User ID: $userId"
+
+    Write-Output "Getting OneDrive drive ID..."
+    Write-Log "Getting OneDrive drive ID..."
     $driveId = Get-UserOneDriveId -Token $token -UserId $userId -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+    if (-not $driveId) {
+        Write-Output "Failed to get OneDrive drive ID. Exiting."
+        Write-Log "Failed to get OneDrive drive ID. Exiting." -Type "ERROR"
+        return
+    }
+    Write-Output "Drive ID: $driveId"
+
+    Write-Output "Getting shared items..."
+    Write-Log "Getting shared items..."
+    $scriptTimeoutMinutes = 10
+    $maxFolders = 1000
+    $maxItems = 10000
+    $timeoutTime = (Get-Date).AddMinutes($scriptTimeoutMinutes)
+
     $sharedItems = Get-OneDriveSharedItems -Token $token -UserId $userId -DriveId $driveId -IncludeAllFolders $IncludeAllFolders -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+    Write-Output "Shared items retrieval complete. Count: $($sharedItems.Count)"
+    Write-Log "Shared items retrieval complete. Count: $($sharedItems.Count)"
     $fileName = "OneDriveSharedItems_$($UserPrincipalName.Split('@')[0])_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
     $tempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), $fileName)
     
     if ($sharedItems.Count -gt 0) {
         Write-Log "Found $($sharedItems.Count) shared items in OneDrive"
+        Write-Output "Found $($sharedItems.Count) shared items in OneDrive"
         
         $csvExported = Export-ToCsv -SharedItems $sharedItems -OutputPath $tempPath
         
         if ($csvExported) {
+            Write-Output "Uploading CSV to Azure Blob Storage..."
+            Write-Log "Uploading CSV to Azure Blob Storage..."
             $blobUrl = Upload-ToAzureBlob -StorageAccountName $StorageAccountName -ContainerName $StorageContainerName -FilePath $tempPath -BlobName $fileName -WhatIf:$WhatIf
             
             if (Test-Path $tempPath) {
                 Remove-Item -Path $tempPath -Force
                 Write-Log "Temporary file removed"
+                Write-Output "Temporary file removed"
             }
         }
     } else {
         Write-Log "No shared items found in the OneDrive account" -Type "WARNING"
+        Write-Output "No shared items found in the OneDrive account"
         
         $emptyItem = [PSCustomObject]@{
             Name = ""
@@ -536,11 +627,14 @@ try {
         $csvExported = Export-ToCsv -SharedItems $emptyCollection -OutputPath $tempPath
         
         if ($csvExported) {
+            Write-Output "Uploading empty CSV to Azure Blob Storage..."
+            Write-Log "Uploading empty CSV to Azure Blob Storage..."
             $blobUrl = Upload-ToAzureBlob -StorageAccountName $StorageAccountName -ContainerName $StorageContainerName -FilePath $tempPath -BlobName $fileName -WhatIf:$WhatIf
             
             if (Test-Path $tempPath) {
                 Remove-Item -Path $tempPath -Force
                 Write-Log "Temporary file removed"
+                Write-Output "Temporary file removed"
             }
         }
     }
@@ -549,13 +643,18 @@ try {
     $duration = $endTime - $startTime
     Write-Log "=== OneDrive Shared Items Report Process Completed ==="
     Write-Log "Duration: $($duration.TotalMinutes.ToString("0.00")) minutes"
+    Write-Output "=== OneDrive Shared Items Report Process Completed ==="
+    Write-Output "Duration: $($duration.TotalMinutes.ToString("0.00")) minutes"
     
     if ($WhatIf) {
         Write-Log "=== WHATIF SUMMARY - NO REPORT WAS CREATED OR UPLOADED ===" -Type "WHATIF"
+        Write-Output "=== WHATIF SUMMARY - NO REPORT WAS CREATED OR UPLOADED ==="
     }
     
     Write-Log "User: $UserPrincipalName"
     Write-Log "Shared Items: $($sharedItems.Count)"
+    Write-Output "User: $UserPrincipalName"
+    Write-Output "Shared Items: $($sharedItems.Count)"
     
     $shareTypeStats = @{}
     foreach ($item in $sharedItems) {
@@ -587,32 +686,37 @@ try {
     
     foreach ($shareType in $shareTypeStats.Keys) {
         Write-Log "Share Type - $shareType`: $($shareTypeStats[$shareType])"
+        Write-Output "Share Type - $shareType`: $($shareTypeStats[$shareType])"
     }
     
     $outputObject = [PSCustomObject][ordered]@{
         UserPrincipalName = $UserPrincipalName
         TotalSharedItems = $sharedItems.Count
-        AnonymousShares = $shareTypeStats["Anonymous"] ? $shareTypeStats["Anonymous"] : 0
-        OrganizationShares = $shareTypeStats["Organization"] ? $shareTypeStats["Organization"] : 0
-        DirectShares = $shareTypeStats["Direct"] ? $shareTypeStats["Direct"] : 0
-        LinkShares = $shareTypeStats["Link"] ? $shareTypeStats["Link"] : 0
+        AnonymousShares = if ($shareTypeStats.ContainsKey("Anonymous")) { $shareTypeStats["Anonymous"] } else { 0 }
+        OrganizationShares = if ($shareTypeStats.ContainsKey("Organization")) { $shareTypeStats["Organization"] } else { 0 }
+        DirectShares = if ($shareTypeStats.ContainsKey("Direct")) { $shareTypeStats["Direct"] } else { 0 }
+        LinkShares = if ($shareTypeStats.ContainsKey("Link")) { $shareTypeStats["Link"] } else { 0 }
         WhatIfMode = $WhatIf
         DurationMinutes = $duration.TotalMinutes
         ReportUrl = $blobUrl
         Timestamp = $reportTimestamp.ToString("yyyy-MM-dd HH:mm:ss")
     }
-    
+
+    Write-Output "Script completed. Output object:"
+    Write-Output $outputObject
     return $outputObject
 }
 catch {
+    Write-Output "Script execution failed: $_"
     Write-Log "Script execution failed: $_" -Type "ERROR"
     throw $_
 }
 finally {
+    Write-Output "Script execution completed"
     Write-Log "Script execution completed"
-    
     if ($tempPath -and (Test-Path $tempPath)) {
         Remove-Item -Path $tempPath -Force
         Write-Log "Temporary file cleaned up during exit"
+        Write-Output "Temporary file cleaned up during exit"
     }
 }
