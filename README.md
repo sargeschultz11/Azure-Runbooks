@@ -31,7 +31,9 @@ Azure-Runbooks/
 ├── Report-UserManagers/            # Generate reports of users and their managers
 ├── Report-MissingSecurityUpdates/  # Report on devices missing security updates
 ├── Sync-IntuneDevices/             # Force sync all managed Intune devices
-└── Report-DeviceSyncOverdue/       # Report on devices overdue for sync
+├── Report-DeviceSyncOverdue/       # Report on devices overdue for sync
+├── Report-OneDriveSharedItems/     # Generate reports of shared items in OneDrive
+├── Task-SetCompanyAttribute/       # Set company attribute for all users
 ```
 
 Each runbook folder contains:
@@ -68,17 +70,21 @@ Each runbook includes detailed documentation for implementation and usage. In ge
 - **Autopilot Group Tag Sync**: Synchronize Windows Autopilot device group tags with their corresponding Intune device categories.
 - **Device Sync Reminder**: Identify devices that haven't synced in a specified period and send email notifications to their primary users.
 - **Intune Device Sync**: Force synchronize all devices in your Intune environment with batch processing and throttling protection.
+- **Device Sync Overdue Report**: Generate comprehensive reports of devices overdue for sync and store them in Azure Blob Storage.
 
 ### Security and Compliance
 - **Intune Apple Token Monitor**: Monitor expiration dates of Apple Push Notification certificates, VPP tokens, and DEP tokens in Microsoft Intune and send proactive alerts through Microsoft Teams.
 - **Missing Security Updates Report**: Generate reports of Windows devices missing multiple security updates from Log Analytics data and upload them to SharePoint.
+- **OneDrive Shared Items Report**: Scan a user's OneDrive for shared items and generate comprehensive reports for security and compliance purposes.
 
 ### Reporting
 - **Discovered Apps Report**: Generate comprehensive reports of all applications discovered across your managed devices.
 - **Device Compliance Report**: Create detailed reports on device compliance status.
 - **Devices with Specific App Report**: Identify all devices with a specific application installed.
 - **User Managers Report**: Generate a report of all licensed internal users along with their manager information.
-- **Device Sync Overdue Report**: Generate comprehensive reports of devices overdue for sync and store them in Azure Blob Storage.
+
+### User Management
+- **Company Attribute Setting**: Set a consistent company attribute across all user accounts in your Microsoft 365 tenant.
 
 ## Branch Management
 
