@@ -399,6 +399,16 @@ try {
         TotalDevices = $autopilotDevices.Count
     }
     
+    #Get all matching objects to exclude from processing
+    $comparison = Compare-Object -ReferenceObject @($autopilotDevices | Select-Object) -DifferenceObject @($intuneDevices | Select-Object) -Property serialNumber, groupTag -IncludeEqual -PassThru
+    $stats.NoChangeCount = ($comparison | Where-Object { $_.SideIndicator -eq '==' }).Count
+    $autopilotDevices =  $comparison | Where-Object { $_.SideIndicator -eq '<=' }
+
+    #Get all devices with a matching serialNumber in both Autopilot and Intune Devices. Exclude devices with no matching Intune device
+    $comparison = Compare-Object -ReferenceObject @($autopilotDevices | Select-Object) -DifferenceObject @($intuneDevices | Select-Object) -Property serialNumber -PassThru -IncludeEqual
+    $stats.NoMatchCount = ($comparison | Where-Object { $_.SideIndicator -eq '<=' }).Count
+    $autopilotDevices =  $comparison | Where-Object { $_.SideIndicator -eq '==' }
+    
     $totalDevices = $autopilotDevices.Count
     $batches = [Math]::Ceiling($totalDevices / $BatchSize)
     Write-Log "Processing $totalDevices Autopilot devices in $batches batches of maximum $BatchSize devices"
