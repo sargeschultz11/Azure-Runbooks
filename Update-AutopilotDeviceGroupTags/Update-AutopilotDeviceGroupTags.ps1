@@ -390,6 +390,17 @@ try {
     }
     $autopilotDevices = Get-AutopilotDevices -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
     $intuneDevices = Get-IntuneDevicesWithCategories -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+    
+    #Add groupTag property to the intuneDevices array for comparison to the autopilotDevices array
+    $intuneDevices | ForEach-Object {
+        if ($_.deviceCategoryDisplayName -ne 'Unknown') {
+            $_.groupTag = $_.deviceCategoryDisplayName
+        }
+        else {
+            $_.groupTag = ''
+        }
+    }
+    
     $stats = @{
         UpdatedCount = 0
         NoChangeCount = 0
@@ -398,6 +409,16 @@ try {
         NoCategoryCount = 0
         TotalDevices = $autopilotDevices.Count
     }
+    
+    #Get all matching objects to exclude from processing
+    $comparison = Compare-Object -ReferenceObject @($autopilotDevices | Select-Object) -DifferenceObject @($intuneDevices | Select-Object) -Property serialNumber, groupTag -IncludeEqual -PassThru
+    $stats.NoChangeCount = ($comparison | Where-Object { $_.SideIndicator -eq '==' }).Count
+    $autopilotDevices =  $comparison | Where-Object { $_.SideIndicator -eq '<=' }
+
+    #Get all devices with a matching serialNumber in both Autopilot and Intune Devices. Exclude devices with no matching Intune device
+    $comparison = Compare-Object -ReferenceObject @($autopilotDevices | Select-Object) -DifferenceObject @($intuneDevices | Select-Object) -Property serialNumber -PassThru -IncludeEqual
+    $stats.NoMatchCount = ($comparison | Where-Object { $_.SideIndicator -eq '<=' }).Count
+    $autopilotDevices =  $comparison | Where-Object { $_.SideIndicator -eq '==' }
     
     $totalDevices = $autopilotDevices.Count
     $batches = [Math]::Ceiling($totalDevices / $BatchSize)
