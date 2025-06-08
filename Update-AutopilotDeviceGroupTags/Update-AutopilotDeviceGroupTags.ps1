@@ -388,8 +388,8 @@ try {
     foreach ($category in $deviceCategories) {
         Write-Log "- $($category.displayName) (ID: $($category.id))"
     }
-    $autopilotDevices = Get-AutopilotDevices -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
-    $intuneDevices = Get-IntuneDevicesWithCategories -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+    [array]$autopilotDevices = Get-AutopilotDevices -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+    [array]$intuneDevices = Get-IntuneDevicesWithCategories -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
     $stats = @{
         UpdatedCount = 0
         NoChangeCount = 0
