@@ -428,7 +428,7 @@ try {
         $intuneDevice = $intuneDeviceLookup[$serialNumber]
         $deviceCategory = $intuneDevice.deviceCategoryDisplayName
         
-        if ([string]::IsNullOrEmpty($deviceCategory)) {
+        if ($deviceCategory -eq 'Unknown') {
             Write-Log "Intune device with serial number $serialNumber has no category assigned. Skipping." -Type "WARNING"
             $stats.NoCategoryCount++
             continue
