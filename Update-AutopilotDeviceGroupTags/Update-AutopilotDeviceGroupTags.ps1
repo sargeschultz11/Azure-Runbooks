@@ -240,7 +240,7 @@ function Get-IntuneDevicesWithCategories {
     
     try {
         Write-Log "Retrieving Intune devices with their categories..."
-        $uri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$select=id,serialNumber,deviceCategoryDisplayName,deviceName"
+        $uri = "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$select=id,serialNumber,deviceCategoryDisplayName,deviceName,lastSyncDateTime"
         $devices = @()
         $response = Invoke-MsGraphRequestWithRetry -Token $Token -Uri $uri -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
         $devices += $response.value
@@ -322,7 +322,7 @@ function Process-DeviceBatch {
             $deviceId = $device.id
             Write-Log "Processing Autopilot device with serial number: $serialNumber"
             Write-Log "Current group tag: '$currentGroupTag'"
-            $intuneDevice = $IntuneDevicesMap | Where-Object { $_.serialNumber -eq $serialNumber }
+            $intuneDevice = $IntuneDevicesMap | Where-Object { $_.serialNumber -eq $serialNumber } | Sort-Object -Property lastSyncDateTime | Select-Object -Last 1
             if ($null -ne $intuneDevice) {
                 $deviceCategory = $intuneDevice.deviceCategoryDisplayName
                 if (-not [string]::IsNullOrEmpty($deviceCategory)) {
