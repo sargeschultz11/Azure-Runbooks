@@ -27,9 +27,9 @@
 .NOTES
     File Name: Update-AutopilotDeviceGroupTags.ps1
     Author: Ryan Schultz
-    Version: 1.1
+    Version: 1.2
     Created: 2025-04-10
-    Updated: 2025-04-22
+    Updated: 2025-06-07
     
     Companion script to Update-IntuneDeviceCategories.ps1
     
@@ -390,6 +390,20 @@ try {
     }
     [array]$autopilotDevices = Get-AutopilotDevices -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
     [array]$intuneDevices = Get-IntuneDevicesWithCategories -Token $token -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
+
+
+    # Create a lookup dictionary of Intune devices by serial number with their categories
+    $intuneDeviceLookup = @{}
+    foreach ($intuneDevice in $intuneDevices) {
+        if (-not [string]::IsNullOrEmpty($intuneDevice.serialNumber)) {
+            # If multiple Intune devices exist with the same serial number, take the most recently synced one
+            if (-not $intuneDeviceLookup.ContainsKey($intuneDevice.serialNumber) -or 
+                [datetime]$intuneDeviceLookup[$intuneDevice.serialNumber].lastSyncDateTime -lt [datetime]$intuneDevice.lastSyncDateTime) {
+                $intuneDeviceLookup[$intuneDevice.serialNumber] = $intuneDevice
+            }
+        }
+    }
+
     $stats = @{
         UpdatedCount = 0
         NoChangeCount = 0
@@ -397,6 +411,37 @@ try {
         NoMatchCount = 0
         NoCategoryCount = 0
         TotalDevices = $autopilotDevices.Count
+    }
+
+    # Filter autopilot devices that need updates
+    $devicesToProcess = @()
+    foreach ($autopilotDevice in $autopilotDevices) {
+        $serialNumber = $autopilotDevice.serialNumber
+        $currentGroupTag = $autopilotDevice.groupTag
+        
+        if (-not $intuneDeviceLookup.ContainsKey($serialNumber)) {
+            Write-Log "No matching Intune device found with serial number: $serialNumber. Skipping." -Type "WARNING"
+            $stats.NoMatchCount++
+            continue
+        }
+        
+        $intuneDevice = $intuneDeviceLookup[$serialNumber]
+        $deviceCategory = $intuneDevice.deviceCategoryDisplayName
+        
+        if ([string]::IsNullOrEmpty($deviceCategory)) {
+            Write-Log "Intune device with serial number $serialNumber has no category assigned. Skipping." -Type "WARNING"
+            $stats.NoCategoryCount++
+            continue
+        }
+        
+        if ($currentGroupTag -eq $deviceCategory) {
+            Write-Log "Autopilot device with serial number $serialNumber already has correct group tag: '$currentGroupTag'. No update needed."
+            $stats.NoChangeCount++
+            continue
+        }
+        
+        # This device needs an update
+        $devicesToProcess += $autopilotDevice
     }
     
     $totalDevices = $autopilotDevices.Count
