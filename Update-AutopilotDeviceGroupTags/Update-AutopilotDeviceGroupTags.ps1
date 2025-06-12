@@ -27,7 +27,7 @@
 .NOTES
     File Name: Update-AutopilotDeviceGroupTags.ps1
     Author: Ryan Schultz
-    Version: 1.2
+    Version: 1.3
     Created: 2025-04-10
     Updated: 2025-06-07
     
@@ -444,7 +444,7 @@ try {
         $devicesToProcess += $autopilotDevice
     }
     
-    $totalDevices = $autopilotDevices.Count
+    $totalDevices = $devicesToProcess.Count
     $batches = [Math]::Ceiling($totalDevices / $BatchSize)
     Write-Log "Processing $totalDevices Autopilot devices in $batches batches of maximum $BatchSize devices"
     for ($batchNum = 0; $batchNum -lt $batches; $batchNum++) {
@@ -452,7 +452,7 @@ try {
         $end = [Math]::Min(($batchNum + 1) * $BatchSize - 1, $totalDevices - 1)
         $currentBatchSize = $end - $start + 1
         Write-Log "Processing batch $($batchNum + 1) of $batches (devices $($start + 1) to $($end + 1) of $totalDevices)"
-        $currentBatch = $autopilotDevices[$start..$end]
+        $currentBatch = $devicesToProcess[$start..$end]
         $batchResult = Process-DeviceBatch -Token $token -AutopilotDevices $currentBatch -IntuneDevicesMap $intuneDevices -WhatIf:$WhatIf -Stats $stats -MaxRetries $MaxRetries -InitialBackoffSeconds $InitialBackoffSeconds
         Write-Log "Batch $($batchNum + 1) results: $($batchResult.UpdatedCount) updated, $($batchResult.NoChangeCount) already correct, $($batchResult.NoCategoryCount) no category, $($batchResult.NoMatchCount) no match, $($batchResult.ErrorCount) errors"
         if ($batchNum -lt $batches - 1) {
