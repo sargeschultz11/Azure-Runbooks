@@ -56,9 +56,9 @@ $accessToken = Get-MsGraphToken
 
 $users = @()
 $filter = "userType eq 'Member' and assignedLicenses/$count ne 0"
-$select = "id,displayName,givenName,surname,jobTitle,department,userPrincipalName,mail"
+$select = "id,displayName,givenName,surname,jobTitle,department,companyName,userPrincipalName,mail"
 $expand = "manager"
-$nextLink = "https://graph.microsoft.com/v1.0/users?`$select=id,displayName,givenName,surname,jobTitle,department,userPrincipalName,mail,userType,assignedLicenses&`$expand=manager"
+$nextLink = "https://graph.microsoft.com/v1.0/users?`$select=id,displayName,givenName,surname,jobTitle,department,companyName,userPrincipalName,mail,userType,assignedLicenses&`$expand=manager"
 $headers = @{ Authorization = "Bearer $accessToken" }
 
 do {
@@ -67,14 +67,13 @@ do {
         # Skip if they're a guest or unlicensed
         if ($user.userType -ne 'Member' -or !$user.assignedLicenses.Count) {
             continue
-        }
-
-        $users += [PSCustomObject]@{
+        }        $users += [PSCustomObject]@{
             FirstName         = $user.givenName
             LastName          = $user.surname
             DisplayName       = $user.displayName
             Title             = $user.jobTitle
             Department        = $user.department
+            Company           = $user.companyName
             UserPrincipalName = $user.userPrincipalName
             Email             = $user.mail
             ManagerName       = $user.manager.displayName
